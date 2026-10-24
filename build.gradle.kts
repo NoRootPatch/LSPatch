@@ -64,13 +64,13 @@ val verName by extra("1.2")
 val coreVerCode by extra(coreCommitCount)
 val coreVerName by extra(coreLatestTag)
 val coreVerHash by extra(coreCommitHash)
-val androidMinSdkVersion by extra(28)
+val androidMinSdkVersion by extra(24)
 val androidTargetSdkVersion by extra(36)
 val androidCompileSdkVersion by extra(37)
 val androidCompileNdkVersion by extra("29.0.13113456")
 val androidBuildToolsVersion by extra("37.0.0")
-val androidSourceCompatibility by extra(JavaVersion.VERSION_21)
-val androidTargetCompatibility by extra(JavaVersion.VERSION_21)
+val androidSourceCompatibility by extra(JavaVersion.VERSION_17)
+val androidTargetCompatibility by extra(JavaVersion.VERSION_17)
 
 tasks.register<Delete>("clean") {
     delete(layout.buildDirectory)
@@ -159,6 +159,7 @@ fun Project.configureBaseExtension() {
         compileOptions {
             targetCompatibility(androidTargetCompatibility)
             sourceCompatibility(androidSourceCompatibility)
+            isCoreLibraryDesugaringEnabled = true
         }
 
         buildTypes {
@@ -281,10 +282,26 @@ subprojects {
             }
         }
     }
+
     plugins.withId("com.android.application") {
         configureBaseExtension()
     }
+
     plugins.withId("com.android.library") {
         configureBaseExtension()
+    }
+
+    afterEvaluate {
+        if (
+            plugins.hasPlugin("com.android.application") ||
+            plugins.hasPlugin("com.android.library")
+        ) {
+            dependencies {
+                add(
+                    "coreLibraryDesugaring",
+                    "com.android.tools:desugar_jdk_libs_nio:2.1.5"
+                )
+            }
+        }
     }
 }
