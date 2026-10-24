@@ -69,8 +69,8 @@ val androidTargetSdkVersion by extra(36)
 val androidCompileSdkVersion by extra(37)
 val androidCompileNdkVersion by extra("29.0.13113456")
 val androidBuildToolsVersion by extra("37.0.0")
-val androidSourceCompatibility by extra(JavaVersion.VERSION_17)
-val androidTargetCompatibility by extra(JavaVersion.VERSION_17)
+val androidSourceCompatibility by extra(JavaVersion.VERSION_21)
+val androidTargetCompatibility by extra(JavaVersion.VERSION_21)
 
 tasks.register<Delete>("clean") {
     delete(layout.buildDirectory)
@@ -303,17 +303,5 @@ subprojects {
                 )
             }
         }
-    }
-}
-
-allprojects {
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
-    }
-    tasks.withType<JavaCompile>().configureEach {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
     }
 }
