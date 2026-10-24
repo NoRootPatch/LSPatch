@@ -50,7 +50,7 @@ class LSPApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        HiddenApiBypass.addHiddenApiExemptions("")
+        // HiddenApiBypass.addHiddenApiExemptions("")
         lspApp = this
         filesDir.mkdir()
         // Restore settings/db/keystore from a cloaked APK before opening prefs or Room.
