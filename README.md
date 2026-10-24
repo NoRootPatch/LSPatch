@@ -44,10 +44,16 @@ repository](https://github.com/Xposed-Modules-Repo) and the API references liste
 
 ### Requirements
 
-- **Android 9 (API 28) or newer.** The upper bound follows Vector — see its
+- **Android 7 (API 24) or newer.** The upper bound follows Vector — see its
   [compatibility notes](https://github.com/JingMatrix/Vector#compatibility).
 - **[Shizuku](https://shizuku.rikka.app/) (optional).** With it, the manager installs patched apps
   silently; without it, grant "install unknown apps" once and install by hand.
+
+---
+
+### Screenshots
+- Porting LSPatch was successful
+<img width="360" height="720" alt="Screenshot_2026-10-24_18-53-52" src="https://github.com/user-attachments/assets/f1a24812-f66b-4c5e-bf91-3ff216179756" />
 
 ---
 
