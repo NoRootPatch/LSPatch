@@ -6,7 +6,7 @@ plugins {
 
 android {
     defaultConfig {
-        multiDexEnabled = false
+        multiDexEnabled = true
     }
 
     buildFeatures {
