@@ -29,6 +29,32 @@ jobs:
         submodules: 'recursive'
         fetch-depth: 0
 
+    - name: Patch Vector minSdk to 24
+      shell: bash
+      run: |
+          FILE="core/core/build.gradle.kts"
+          if [ ! -f "$FILE" ]; then
+            echo "ERROR: Cannot find $FILE"
+            exit 1
+          fi
+          python3 - "$FILE" <<'PY'
+          import re
+          import sys
+          path = sys.argv[1]
+          with open(path, "r", encoding="utf-8") as f:
+              content = f.read()
+          pattern = r'(?m)^(\s*val\s+androidMinSdkVersion\s*=\s*)\d+(\s*(?://.*)?)$'
+          updated, count = re.subn(pattern, r'\g<1>24\g<2>', content)
+          if count != 1:
+              raise SystemExit(
+                  f"ERROR: Expected exactly one androidMinSdkVersion declaration, found {count}"
+              )
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(updated)
+          print("Patched androidMinSdkVersion = 24")
+          PY
+          grep -n 'androidMinSdkVersion' "$FILE"
+
     - name: Write key
       if: github.event_name != 'pull_request'
       run: |
