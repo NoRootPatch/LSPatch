@@ -45,7 +45,7 @@ public class LSPatch {
     private int sigbypassLevel = 0;
 
     @Parameter(names = {"--injectdex"}, description = "Inject directly the loder dex file into the original application package")
-    private boolean injectDex = false;
+    private boolean injectDex = true;
 
     @Parameter(names = {"-k", "--keystore"}, arity = 4, description = "Set custom signature keystore. Followed by 4 arguments: keystore path, keystore password, keystore alias, keystore alias password")
     private List<String> keystoreArgs = Arrays.asList(null, "123456", "key0", "123456");
@@ -82,12 +82,6 @@ public class LSPatch {
 
     @Parameter(names = {"--documents-provider"}, description = "Inject a DocumentsProvider exposing the app's private data to the system file picker")
     private boolean injectDocumentsProvider = false;
-
-    @Parameter(names = {"--gms-replacement"}, description = "Redirect Google Play services calls and pushes to this replacement package (e.g. vendor.android.gms) and declare the original signature to it")
-    private String gmsReplacementPackage = null;
-
-    @Parameter(names = {"--fake-signature"}, description = "Declare the original signature as fake-signature, for a ROM with signature spoofing")
-    private boolean declareFakeSignature = false;
 
     private final JCommander jCommander;
 
@@ -144,8 +138,6 @@ public class LSPatch {
                         .map(ManifestOverrides::normalizePermission)
                         .collect(Collectors.toList()))
                 .injectDocumentsProvider(injectDocumentsProvider)
-                .gmsReplacementPackage(gmsReplacementPackage)
-                .declareFakeSignature(declareFakeSignature)
                 .build();
         return PatchSpec.builder()
                 .apks(apkPaths.stream().map(File::new).collect(Collectors.toList()))
