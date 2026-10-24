@@ -444,11 +444,10 @@ public final class ApkPatcher {
            property.addApplicationAttribute(new AttributeItem("appComponentFactory", PROXY_APP_COMPONENT_FACTORY));
            property.addMetaData(new ModificationProperty.MetaData("lspatch", metadata));
         // ContentProvider
-        HashMap<String, String> provider = new HashMap<>();
-            provider.put("name", "org.lsposed.npatch.metaloader.NewContentProvider");
-            provider.put("authorities", packageName + ".NewContentProvider");   
-            provider.put("exported", "false");
-            provider.put("initOrder", "999");
+        List<AttributeItem> provider = new ArrayList<>();
+            provider.put(new AttributeItem(NodeValue.Application.NAME, "org.lsposed.npatch.metaloader.NewContentProvider"));
+            provider.put(new AttributeItem(NodeValue.Application.Provider.AUTHORITIES, packageName + ".NewContentProvider"));   
+            provider.put(new AttributeItem("exported", Boolean.FALSE));
             property.addProvider(provider, PROXY_APP_COMPONENT_FACTORY);
         applyManifestOverrides(property, packageName);
         // TODO: replace query_all with queries -> manager
