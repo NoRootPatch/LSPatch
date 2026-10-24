@@ -38,6 +38,10 @@ android {
         buildConfigField("String", "TRANSLATIONS", "\"${translations.joinToString(",")}\"")
     }
 
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+    } 
+
     androidResources {
         noCompress.add(".so")
     }
