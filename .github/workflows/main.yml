@@ -32,7 +32,7 @@ jobs:
     - name: Patch Vector minSdk to 24
       shell: bash
       run: |
-          FILE="core/core/build.gradle.kts"
+          FILE="core/build.gradle.kts"
           if [ ! -f "$FILE" ]; then
             echo "ERROR: Cannot find $FILE"
             exit 1
