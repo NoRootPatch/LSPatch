@@ -41,7 +41,6 @@ import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.HashMap;
 import java.util.Objects;
 import java.util.Set;
 
@@ -445,9 +444,9 @@ public final class ApkPatcher {
            property.addMetaData(new ModificationProperty.MetaData("lspatch", metadata));
         // ContentProvider
         List<AttributeItem> provider = new ArrayList<>();
-            provider.put(new AttributeItem(NodeValue.Application.NAME, "org.lsposed.npatch.metaloader.NewContentProvider"));
-            provider.put(new AttributeItem(NodeValue.Application.Provider.AUTHORITIES, packageName + ".NewContentProvider"));   
-            provider.put(new AttributeItem("exported", Boolean.FALSE));
+            provider.add(new AttributeItem(NodeValue.Application.NAME, "org.lsposed.npatch.metaloader.NewContentProvider"));
+            provider.add(new AttributeItem(NodeValue.Application.Provider.AUTHORITIES, packageName + ".NewContentProvider"));   
+            provider.add(new AttributeItem("exported", Boolean.FALSE));
             property.addProvider(provider, PROXY_APP_COMPONENT_FACTORY);
         applyManifestOverrides(property, packageName);
         // TODO: replace query_all with queries -> manager
