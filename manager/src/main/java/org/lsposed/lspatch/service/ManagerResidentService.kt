@@ -207,7 +207,7 @@ class ManagerResidentService : Service() {
         NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(if (collecting) R.string.log_service_title else R.string.resident_service_title))
             .setContentText(getString(if (collecting) R.string.log_service_text else R.string.resident_service_text))
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.mipmap.ic_launcher_old)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setCategory(Notification.CATEGORY_SERVICE)
