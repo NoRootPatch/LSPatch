@@ -41,6 +41,7 @@ import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Set;
 
@@ -187,6 +188,8 @@ public final class ApkPatcher {
                     spec.injectDex(),
                     spec.manifestOverrides().addedPermissions.toArray(new String[0]),
                     spec.manifestOverrides().injectDocumentsProvider,
+                    null,
+                    false,
                     spec.useManager() ? spec.managerPackageName() : null);
             byte[] configBytes = new Gson().toJson(config).getBytes(StandardCharsets.UTF_8);
 
