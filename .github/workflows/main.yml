@@ -1,7 +1,6 @@
 name: Android CI
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
 
@@ -153,74 +152,4 @@ jobs:
           --latest \
           --title "LSPatch ${TAG}" \
           --notes "$notes" \
-          "${assets[@]}"
-
-    # --- canary distribution (master push) -----------------------------------------------------
-    #
-    # The apk/jar are also attached to a rolling prerelease so testers can download without a GitHub
-    # account: an Actions artifact 401s an anonymous caller, a release asset does not. Marked
-    # prerelease so releases/latest keeps pointing at the last stable tag. Release commits never reach
-    # here — the job-level `if` skips their master build outright.
-    - name: Publish canary prerelease
-      if: >-
-        success() &&
-        (github.event_name == 'workflow_dispatch' ||
-         (github.event_name == 'push' && github.ref == 'refs/heads/master'))
-      env:
-        GH_TOKEN: ${{ github.token }}
-        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
-      run: |
-        set -euo pipefail
-        code=$(git rev-list HEAD --count)
-        short=$(git rev-parse --short HEAD)
-        subject=$(git log -1 --pretty=%s)
-        tag="canary-${code}"
-        notes=$(cat <<EOF
-        **${subject}**
-
-        Built from [\`${short}\`](${COMMIT_URL}) by [run ${{ github.run_id }}](${RUN_URL}).
-
-        A canary — the current state of \`master\`, tested by CI and nothing else, published as a
-        prerelease so it can be downloaded without a GitHub account.
-
-        | Build | Use it when |
-        | :-- | :-- |
-        | \`…-debug.apk\` / \`…-debug.jar\` | Chasing a bug — far more logging. |
-        | \`…-release.apk\` / \`…-release.jar\` | You just want the newest code. |
-
-        Only the five most recent canaries are kept.
-        EOF
-        )
-        # Collect the built assets by their real names and fail loudly if the apk or jar is missing,
-        # rather than letting a glob publish a canary without its manager APK. Both variants attach.
-        shopt -s nullglob
-        assets=(out/release/manager-*.apk out/release/lspatch-*.jar out/debug/manager-*.apk out/debug/lspatch-*.jar)
-        ls out/release/manager-*.apk >/dev/null 2>&1 || { echo "::error::no release manager APK built"; exit 1; }
-        ls out/release/lspatch-*.jar >/dev/null 2>&1 || { echo "::error::no release lspatch jar built"; exit 1; }
-        # Recreate rather than edit so a re-run replaces the build instead of appending assets.
-        gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
-        gh release create "$tag" \
-          --prerelease \
-          --target "${{ github.sha }}" \
-          --title "LSPatch canary ${code}" \
-          --notes "$notes" \
-          "${assets[@]}"
-
-    # Five is enough to bisect a regression; sorted by version code (commit count, monotonic), not
-    # date, which reruns and reverts can disorder.
-    - name: Keep only the five most recent canaries
-      if: >-
-        success() &&
-        (github.event_name == 'workflow_dispatch' ||
-         (github.event_name == 'push' && github.ref == 'refs/heads/master'))
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        set -euo pipefail
-        tags=$(gh release list --limit 100 --json tagName --jq '.[].tagName' | grep '^canary-' || true)
-        [ -n "$tags" ] || exit 0
-        echo "$tags" | sort -t- -k2 -n -r | tail -n +6 | while read -r old; do
-          echo "Removing $old"
-          gh release delete "$old" --yes --cleanup-tag
-        done
+          "${assets[@]}"  
