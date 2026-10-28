@@ -140,4 +140,5 @@ dependencies {
     implementation(lspatch.rikka.refine)
     implementation(lspatch.hiddenapibypass)
     ksp(lspatch.androidx.room.compiler)
+    runtimeOnly(project(":backport"))
 }
