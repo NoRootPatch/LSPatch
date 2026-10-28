@@ -34,6 +34,7 @@ include(
     ":patch-loader",
     ":share:android",
     ":share:java",
+    ":backport",
 )
 
 includeBuild("core") {
