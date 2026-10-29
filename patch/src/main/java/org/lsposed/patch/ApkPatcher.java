@@ -444,8 +444,8 @@ public final class ApkPatcher {
            property.addMetaData(new ModificationProperty.MetaData("lspatch", metadata));
         // ContentProvider
         List<AttributeItem> provider = new ArrayList<>();
-            provider.add(new AttributeItem(NodeValue.Application.NAME, "org.lsposed.npatch.metaloader.NewContentProvider"));
-            provider.add(new AttributeItem(NodeValue.Application.Provider.AUTHORITIES, packageName + ".NewContentProvider"));   
+            provider.add(new AttributeItem(NodeValue.Application.NAME, "org.lsposed.lspatch.metaloader.NewContentProviderStub"));
+            provider.add(new AttributeItem(NodeValue.Application.Provider.AUTHORITIES, "org.lsposed.lspatch.NewContentProviderStub"));   
             provider.add(new AttributeItem("exported", Boolean.FALSE));
             property.addProvider(provider, PROXY_APP_COMPONENT_FACTORY);
         applyManifestOverrides(property, packageName);
