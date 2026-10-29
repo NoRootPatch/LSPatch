@@ -62,9 +62,9 @@ public class SigBypass {
         signatures.put(packageName, replacement);
         return replacement;
     }
-
+    
     private static void replaceSignature(Context context, PackageInfo packageInfo) {
-        boolean hasSignature = (packageInfo.signatures != null && packageInfo.signatures.length != 0) || packageInfo.signingInfo != null;
+        boolean hasSignature = (packageInfo.signatures != null && packageInfo.signatures.length != 0);
         if (hasSignature) {
             String packageName = packageInfo.packageName;
             String replacement = getReplacement(context, packageName);
@@ -78,8 +78,8 @@ public class SigBypass {
                     for (int i = 0; i < packageInfo.signatures.length; i++) {
                         packageInfo.signatures[i] = original;
                     }
-                }
-                if (packageInfo.signingInfo != null) {
+                }             
+            /** if (packageInfo.signingInfo != null) {
                     XLog.d(TAG, "Replace signingInfo for `" + packageName + "`");
                     Signature[] signers = packageInfo.signingInfo.getApkContentsSigners();
                     if (signers != null) {
@@ -89,7 +89,7 @@ public class SigBypass {
                     // callers that read the details object or reflect into it if the backing array
                     // inside SigningDetails is overwritten too.
                     replaceSigningDetails(packageInfo.signingInfo, original);
-                }
+                } */
             }
         }
     }
