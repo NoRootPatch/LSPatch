@@ -7,39 +7,60 @@ import java.util.concurrent.ConcurrentMap;
 public final class PackageInfo {
     private PackageInfo() {}
 
-    private static final class Bag {
-        private static final ConcurrentMap<String, Integer> MAJOR = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<String, Integer> MAJOR = new ConcurrentHashMap<>();
 
-        static int get(String key, int fallback) {
-            Integer value = MAJOR.get(key);
-            return value != null ? value : fallback;
-        }
-
-        static void put(String key, int value) {
-            MAJOR.put(key, value);
+    private static Object readField(Object target, String name) {
+        if (target == null) return null;
+        try {
+            Field field = target.getClass().getField(name);
+            return field.get(target);
+        } catch (ReflectiveOperationException ignored) {
+            return null;
         }
     }
 
-    private static String key(PackageInfo info) {
-        return info.packageName == null ? "@" + System.identityHashCode(info) : info.packageName;
+    private static void writeIntField(Object target, String name, int value) {
+        if (target == null) return;
+        try {
+            Field field = target.getClass().getField(name);
+            field.setInt(target, value);
+        } catch (ReflectiveOperationException ignored) {
+        }
     }
 
-    public static long getLongVersionCode(PackageInfo info) {
+    private static String key(Object info) {
+        Object name = readField(info, "packageName");
+        return name instanceof String ? (String) name : "@" + System.identityHashCode(info);
+    }
+
+    private static int readInt(Object info, String name, int fallback) {
+        Object value = readField(info, name);
+        return value instanceof Integer ? (Integer) value : fallback;
+    }
+
+    public static long getLongVersionCode(Object info) {
         if (info == null) throw new NullPointerException("info");
         int major = getVersionCodeMajor(info);
-        return ((long) major << 32) | (((long) info.versionCode) & 0xffffffffL);
+        int version = readInt(info, "versionCode", 0);
+        return ((long) major << 32) | (((long) version) & 0xffffffffL);
     }
 
-    public static void setLongVersionCode(PackageInfo info, long longVersionCode) {
+    public static void setLongVersionCode(Object info, long value) {
         if (info == null) throw new NullPointerException("info");
-        info.versionCode = (int) longVersionCode;
-        writeIntField(info, "versionCodeMajor", (int) (longVersionCode >>> 32));
+        writeIntField(info, "versionCode", (int) value);
+        setVersionCodeMajor(info, (int) (value >>> 32));
     }
 
-    public static int getVersionCodeMajor(PackageInfo info) {
+    public static int getVersionCodeMajor(Object info) {
         if (info == null) throw new NullPointerException("info");
-        int stored = Bag.get(key(info), Integer.MIN_VALUE);
-        if (stored != Integer.MIN_VALUE) return stored;
+        String key = key(info);
+        return MAJOR.getOrDefault(key, readInt(info, "versionCodeMajor", 0));
+    }
+
+    public static void setVersionCodeMajor(Object info, int value) {
+        if (info == null) throw new NullPointerException("info");
+        MAJOR.put(key(info), value);
+        writeIntField(info, "versionCodeMajor", value);
     }
 
     public static int getVersionCodeMajor(long value) {
@@ -50,33 +71,17 @@ public final class PackageInfo {
         return (int) value;
     }
 
-    private static void writeIntField(PackageInfo info, String name, int value) {
-        Bag.put(key(info), value);
-        try {
-            Field field = info.getClass().getField(name);
-            field.setInt(info, value);
-        } catch (ReflectiveOperationException ignored) {
-        }
-    }
-
-    private static int readIntField(PackageInfo info, String name, int fallback) {
-        try {
-            return info.getClass().getField(name).getInt(info);
-        } catch (ReflectiveOperationException ignored) {
-            return fallback;
-        }
-    }
-
-    public static SigningInfo getSigningInfo(PackageInfo info) {
-        if (info == null) {
-            return null;
-        }
-        Signature[] signatures = info.signatures;
-        if (signatures == null || signatures.length == 0) {
-            return null;
-        }
+    public static SigningInfo getSigningInfo(Object info) {
+        if (info == null) return null;
+        Object value = readField(info, "signatures");
+        if (!(value instanceof Signature[])) return null;
+        Signature[] signatures = (Signature[]) value;
+        if (signatures.length == 0) return null;
         return new SigningInfo(signatures, signatures);
     }
-}
 
-      
+    private static int readInt(Object info, String name, int fallback) {
+        Object value = readField(info, name);
+        return value instanceof Integer ? (Integer) value : fallback;
+    }
+}
