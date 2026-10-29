@@ -352,11 +352,12 @@ object LSPPackageManager {
                     val pm = lspApp.packageManager
                     val manifest = runCatching { ModuleDetection.inspect(info.app, pm) }.getOrNull()
                     val pkgInfo = runCatching { pm.getPackageInfo(info.app.packageName, 0) }.getOrNull()
+                    val versionCode = pkgInfo?.versionCode?.toLong() ?: 0L
                     ModuleBinding(
                         packageName = info.app.packageName,
                         label = info.label,
                         versionName = pkgInfo?.versionName,
-                        versionCode = pkgInfo?.longVersionCode ?: 0L,
+                        versionCode = versionCode,
                         manifest = manifest,
                         icon = AppIconCache.loadBlocking(info.app, pm, iconSizePx),
                         apkPath = info.app.sourceDir,
@@ -823,7 +824,7 @@ object LSPPackageManager {
 
     /** The set of certificates that currently authenticate a package or archive (minSdk 28, so v2+ signing info). */
     private fun signersOf(info: android.content.pm.PackageInfo): Set<Signature> =
-        info.signingInfo?.apkContentsSigners?.toSet().orEmpty()
+        info.signatures?.toSet().orEmpty()
 
     /**
      * Whether patching [packageName] would need an uninstall, judged before the apk is built so the pre-patch preview
