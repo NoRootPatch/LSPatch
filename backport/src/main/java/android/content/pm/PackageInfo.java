@@ -78,10 +78,5 @@ public final class PackageInfo {
         Signature[] signatures = (Signature[]) value;
         if (signatures.length == 0) return null;
         return new SigningInfo(signatures, signatures);
-    }
-
-    private static int readInt(Object info, String name, int fallback) {
-        Object value = readField(info, name);
-        return value instanceof Integer ? (Integer) value : fallback;
-    }
+    }    
 }
