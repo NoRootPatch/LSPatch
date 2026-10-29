@@ -74,7 +74,7 @@ data class PatchRequest(
     val mode: PatchMode,
     val debuggable: Boolean = false,
     val sigBypassLevel: Int = 2,
-    val injectDex: Boolean = false,
+    val injectDex: Boolean = true, // Android 7 
     val modules: List<ModuleRef> = emptyList(),
     // Manifest overrides -- null means "leave the app's own value". Patch-time only: they are baked
     // into the manifest, not recorded in the runtime config, so a re-patch starts them fresh. The
