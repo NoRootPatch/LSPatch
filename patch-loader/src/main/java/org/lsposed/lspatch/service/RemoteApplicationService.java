@@ -12,6 +12,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
+import android.os.Process;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.os.UserHandle;
@@ -201,7 +202,6 @@ public class RemoteApplicationService implements IFrameworkService {
                 ok = context.bindService(intent, Context.BIND_AUTO_CREATE, worker, connection);
             } else {
                 var contextImplClass = context.getClass();
-                var getUserMethod = contextImplClass.getMethod("getUser");
                 var bindServiceAsUserMethod = contextImplClass.getDeclaredMethod(
                         "bindServiceAsUser",
                         Intent.class,
@@ -209,7 +209,7 @@ public class RemoteApplicationService implements IFrameworkService {
                         int.class,
                         Handler.class,
                         UserHandle.class);
-                var userHandle = (UserHandle) getUserMethod.invoke(context);
+                var userHandle = Process.myUserHandle();
                 ok = Boolean.TRUE.equals(bindServiceAsUserMethod.invoke(
                         context, intent, connection, Context.BIND_AUTO_CREATE, legacyHandler(), userHandle));
             }
