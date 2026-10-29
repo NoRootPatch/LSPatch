@@ -31,6 +31,7 @@
 #include "jni/bypass_sig.h"
 #include "jni/resources_hook.h"
 #include "utils/jni_helper.hpp"
+#include <android/api-level.h>   
 
 using namespace lsplant;
 using namespace vector::native;
@@ -63,7 +64,9 @@ void PatchLoader::LoadDex(JNIEnv* env, Context::PreloadedDex&& dex) {
         return;
     }
 
-    auto in_memory_classloader = JNI_FindClass(env, "dalvik/system/InMemoryDexClassLoader");
+     auto in_memory_classloader = (android_get_device_api_level() >= 26)
+        ? JNI_FindClass(env, "dalvik/system/InMemoryDexClassLoader")
+        : JNI_FindClass(env, "oldlib/dalvik/system/InMemoryDexClassLoader");  
     auto mid_init = JNI_GetMethodID(env, in_memory_classloader, "<init>",
                                     "(Ljava/nio/ByteBuffer;Ljava/lang/ClassLoader;)V");
     auto byte_buffer_class = JNI_FindClass(env, "java/nio/ByteBuffer");
