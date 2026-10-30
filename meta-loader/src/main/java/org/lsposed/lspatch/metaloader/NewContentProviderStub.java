@@ -16,12 +16,12 @@ public final class NewContentProviderStub extends ContentProvider {
     @Override
     public void attachInfo(Context context, ProviderInfo info) {
         super.attachInfo(context, info);
-        android.util.Log.e(TAG, "Provider has been activated");
+        android.util.Log.i(TAG, "Provider has been activated");
         if (sDone) return;
         sDone = true;  
         try {
-            Class<?> cls = Class.forName("org.lsposed.lspatch.metaloader.LSPAppComponentFactoryStub", false, context.getClassLoader());
-            android.util.Log.e(TAG, "LSPAppComponentFactoryStub has been activated");          
+            Class<?> cls = Class.forName("org.lsposed.lspatch.metaloader.LSPAppComponentFactoryStub", true, context.getClassLoader());
+            android.util.Log.i(TAG, "LSPAppComponentFactoryStub has been activated");          
         } catch (Throwable t) {
             android.util.Log.e(TAG, "Bug"  + android.util.Log.getStackTraceString(t));
         }
