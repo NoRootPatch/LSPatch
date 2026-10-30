@@ -1,7 +1,6 @@
 package org.lsposed.lspatch.metaloader;
 
 import android.annotation.SuppressLint;
-import android.app.AppComponentFactory;
 import android.app.ActivityThread;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.IPackageManager;
@@ -27,7 +26,7 @@ import java.util.Objects;
 import java.util.zip.ZipFile;
 
 @SuppressLint("UnsafeDynamicallyLoadedCode")
-public class LSPAppComponentFactoryStub extends AppComponentFactory {
+public class LSPAppComponentFactoryStub {
 
     private static final String TAG = "LSPatch-MetaLoader";
     private static final Map<String, String> archToLib = new HashMap<String, String>(4);
@@ -110,7 +109,7 @@ public class LSPAppComponentFactoryStub extends AppComponentFactory {
                 if (manager == null) {
                     throw new IllegalStateException(
                             "No installed LSPatch manager carries the loader (tried "
-                                    + String.join(", ", managerCandidates(managerPackageName))
+                                    + android.text.TextUtils.join(", ", managerCandidates(managerPackageName))
                                     + "); re-patch this app or reinstall the manager");
                 }
                 Log.i(TAG, "Bootstrap loader from manager: " + chosen);
