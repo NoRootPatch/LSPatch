@@ -1,163 +1,118 @@
 package oldlib.dalvik.system;
 
-import android.os.MemoryFile;
-import oldlib.android.os.SharedMemory;
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.os.Build;
+import dalvik.system.BaseDexClassLoader;
 
 import java.io.File;
-import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
+import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.UUID;
 
-public final class InMemoryDexClassLoader extends ClassLoader {
-    private final Object[] dexFiles;
-    private final SharedMemory[] sharedMemories;
-    private final ByteBuffer[] mappings;
+// This is just a temporary version; I'm actually very tired from doing so much research.
+public class InMemoryDexClassLoader extends BaseDexClassLoader {
 
-    public InMemoryDexClassLoader(ByteBuffer buffer, ClassLoader parent) throws IOException {
-        this(new ByteBuffer[]{buffer}, parent);
+    private static final String TEMP_DEX_PREFIX = ".dex";
+    private static volatile boolean sCleanedUp = false;
+    
+    public InMemoryDexClassLoader(ByteBuffer[] dexBuffers, String librarySearchPath, ClassLoader parent) {
+        super(writeBuffersToDexPath(dexBuffers), null, librarySearchPath, parent);
     }
 
-    public InMemoryDexClassLoader(ByteBuffer[] buffers, ClassLoader parent) throws IOException {
-        super(parent);
-        if (buffers == null || buffers.length == 0) {
-            throw new IllegalArgumentException("buffers must not be empty");
+    public InMemoryDexClassLoader(ByteBuffer dexBuffer, ClassLoader parent) {
+        this(new ByteBuffer[]{dexBuffer}, null, parent);
+    }
+
+    public InMemoryDexClassLoader(ByteBuffer[] dexBuffers, ClassLoader parent) {
+        this(dexBuffers, null, parent);
+    }
+
+    public InMemoryDexClassLoader(byte[] dexBytes, ClassLoader parent) {
+        this(new ByteBuffer[]{ByteBuffer.wrap(dexBytes)}, null, parent);
+    }
+
+    public InMemoryDexClassLoader(byte[] dexBytes) {
+        this(new ByteBuffer[]{ByteBuffer.wrap(dexBytes)}, null, null);
+    }
+
+    public InMemoryDexClassLoader(ByteBuffer dexBuffer) {
+        this(new ByteBuffer[]{dexBuffer}, null, null);
+    }
+
+    private static String writeBuffersToDexPath(ByteBuffer[] dexBuffers) {
+        Context context = getApplicationContext();
+        if (context == null) {
+            throw new IllegalStateException("The context cannot be automatically found. Please ensure the call is on a valid Android process.");
         }
-        List<SharedMemory> memories = new ArrayList<>();
-        List<ByteBuffer> maps = new ArrayList<>();
-        List<Object> files = new ArrayList<>();
+        ensureCleanupOrphanFiles(context);
+        File codeCacheDir = context.getCodeCacheDir();
+        StringBuilder dexPathBuilder = new StringBuilder();
         try {
-            Class<?> dexClass = Class.forName("dalvik.system.DexFile");
-            Constructor<?> dexConstructor = dexClass.getConstructor(String.class);
-            for (int i = 0; i < buffers.length; i++) {
-                ByteBuffer source = buffers[i];
-                if (source == null) {
-                    throw new NullPointerException("buffers[" + i + "]");
+            for (int i = 0; i < dexBuffers.length; i++) {
+                ByteBuffer buffer = dexBuffers[i];
+                File tempFile = new File(codeCacheDir, TEMP_DEX_PREFIX + UUID.randomUUID().toString().replace("-", "") + ".dex");
+                try (FileOutputStream fos = new FileOutputStream(tempFile);
+                    FileChannel channel = fos.getChannel()) {
+                    ByteBuffer slice = buffer.duplicate();
+                    while (slice.hasRemaining()) {
+                        channel.write(slice);
+                    }
+                    channel.force(true);
                 }
-                ByteBuffer view = source.duplicate();
-                byte[] bytes = new byte[view.remaining()];
-                view.get(bytes);
-                if (bytes.length == 0) {
-                    throw new IOException("Empty DEX buffer at index " + i);
+                tempFile.setReadable(false, false);
+                tempFile.setReadable(true, true);
+                tempFile.setWritable(false, false);
+                tempFile.setWritable(true, true);
+                tempFile.setExecutable(false, false);
+                tempFile.deleteOnExit();
+                if (i > 0) {
+                    dexPathBuilder.append(File.pathSeparator);
                 }
-                SharedMemory memory = SharedMemory.create("InMemoryDexClassLoader-" + i, bytes.length);
-                memories.add(memory);
-                ByteBuffer mapping = memory.mapReadWrite();
-                maps.add(mapping);
-                if (mapping.capacity() < bytes.length) {
-                    throw new IOException("Shared mapping is too small");
-                }
-                mapping.position(0);
-                mapping.put(bytes);
-                mapping.position(0);
-                mapping.limit(bytes.length);
-                FileDescriptor fd = memory.getFileDescriptor();
-                int rawFd = getRawFd(fd);
-                if (rawFd < 0) {
-                    throw new IOException("Invalid shared-memory FD");
-                }
-                String path = "/proc/self/fd/" + rawFd;
-                Object dexFile = dexConstructor.newInstance(path);
-                files.add(dexFile);
+                dexPathBuilder.append(tempFile.getAbsolutePath());
             }
-            this.sharedMemories = memories.toArray(new SharedMemory[0]);
-            this.mappings = maps.toArray(new ByteBuffer[0]);
-            this.dexFiles = files.toArray(new Object[0]);
-            appendDexElements(this.dexFiles, parent);
-        } catch (Throwable error) {
-            closeDexFiles(files);
-            unmapAll(maps);
-            closeMemories(memories);
-            if (error instanceof IOException) {
-                throw (IOException) error;
-            }
-            if (error instanceof RuntimeException) {
-                throw (RuntimeException) error;
-            }
-            throw new IOException("Unable to load in-memory DEX", error);
+        } catch (IOException e) {
+            throw new RuntimeException("Error during temporary DEX creation", e);
         }
+        return dexPathBuilder.toString();
     }
 
-    public InMemoryDexClassLoader(Object dexFile, ClassLoader parent) {
-        super(parent);
-        if (dexFile == null) {
-            throw new NullPointerException("dexFile");
-        }
-        this.dexFiles = new Object[]{dexFile};
-        this.sharedMemories = new SharedMemory[0];
-        this.mappings = new ByteBuffer[0];
-        appendDexElements(this.dexFiles, parent);
-    }
-
-    private static int getRawFd(FileDescriptor fd) throws ReflectiveOperationException {
-        Field field = FileDescriptor.class.getDeclaredField("descriptor");
-        field.setAccessible(true);
-        return field.getInt(fd);
-    }
-
-    private static void appendDexElements(Object[] files, ClassLoader parent) {
-        if (parent == null) {
-            throw new IllegalArgumentException("A non-null BaseDexClassLoader parent is required");
-        }
+    @SuppressLint("PrivateApi")
+    private static Context getApplicationContext() {
         try {
-            Class<?> dexClass = Class.forName("dalvik.system.DexFile");
-            Class<?> baseClass = Class.forName("dalvik.system.BaseDexClassLoader");
-            if (!baseClass.isInstance(parent)) {
-                throw new IllegalArgumentException("Parent must be a BaseDexClassLoader");
+            Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
+            Method method = activityThreadClass.getDeclaredMethod("currentApplication");
+            Context app = (Context) method.invoke(null);
+            if (app != null) {
+                return app.getApplicationContext();
             }
-
-            Field pathListField = baseClass.getDeclaredField("pathList");
-            pathListField.setAccessible(true);
-            Object pathList = pathListField.get(parent);
-            Class<?> pathListClass = Class.forName("dalvik.system.DexPathList");
-            Field elementsField = pathListClass.getDeclaredField("dexElements");
-            elementsField.setAccessible(true);
-            Object[] oldElements = (Object[]) elementsField.get(pathList);
-            Class<?> elementClass = Class.forName("dalvik.system.DexPathList$Element");
-            Constructor<?> ctor = elementClass.getDeclaredConstructor(File.class, boolean.class, File.class, dexClass);
-            ctor.setAccessible(true);
-            Object[] added = new Object[files.length];
-            for (int i = 0; i < files.length; i++) {
-                added[i] = ctor.newInstance(null, false, null, files[i]);
-            }
-            Object[] merged = Arrays.copyOf(oldElements, oldElements.length + added.length);
-            System.arraycopy(added, 0, merged, oldElements.length, added.length);
-            elementsField.set(pathList, merged);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Unable to append DexPathList elements", e);
+        } catch (Throwable ignored) {
         }
+        return null;
     }
 
-    private static void closeDexFiles(List<Object> files) {
-        for (Object file : files) {
+    private static void ensureCleanupOrphanFiles(Context context) {
+        if (sCleanedUp) return;
+        sCleanedUp = true;
+        new Thread(() -> {
             try {
-                Method close = file.getClass().getMethod("close");
-                close.invoke(file);
+                File dir = context.getCodeCacheDir();
+                File[] orphanFiles = dir.listFiles((d, name) -> name.startsWith(TEMP_DEX_PREFIX) && name.endsWith(".dex"));
+                if (orphanFiles != null) {
+                    for (File f : orphanFiles) {                   
+                        f.delete();
+                    }
+                }
             } catch (Throwable ignored) {
             }
-        }
+        }, "CompatDexCleaner").start();
     }
-
-    private static void unmapAll(List<ByteBuffer> maps) {
-        for (ByteBuffer map : maps) {
-            try {
-                SharedMemory.unmap(map);
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-
-    private static void closeMemories(List<SharedMemory> memories) {
-        for (SharedMemory memory : memories) {
-            try {
-                memory.close();
-            } catch (Throwable ignored) {
-            }
-        }
-    }
-}
+                                  }
