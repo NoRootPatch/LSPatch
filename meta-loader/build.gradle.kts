@@ -45,5 +45,6 @@ dependencies {
     compileOnly("vector:stubs")
     implementation(projects.share.java)
     implementation(lspatch.hiddenapibypass)
-    compileOnly files("${System.getenv('ANDROID_HOME')}/platforms/android-26/android.jar")
+    val androidHome = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+    compileOnly(files("$androidHome/platforms/android-34/android.jar"))
 }
