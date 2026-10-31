@@ -45,4 +45,5 @@ dependencies {
     compileOnly("vector:stubs")
     implementation(projects.share.java)
     implementation(lspatch.hiddenapibypass)
+    compileOnly files("${System.getenv('ANDROID_HOME')}/platforms/android-26/android.jar")
 }
