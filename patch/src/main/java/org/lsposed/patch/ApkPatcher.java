@@ -416,6 +416,8 @@ public final class ApkPatcher {
             if (!spec.injectDex() && isDexEntry(name)) continue;
             if (name.equals(ANDROID_MANIFEST_XML)) continue;
             if (isSignatureEntry(name)) continue;
+            // Try something
+            if (name.startsWith("lib/") && name.endsWith(".so")) { try (var is = entry.open()) { dstZFile.add(name, is, false); } continue; }
             srcZFile.addFileLink(name, name);
         }
     }
