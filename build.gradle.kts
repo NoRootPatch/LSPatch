@@ -261,11 +261,10 @@ fun Project.configureBaseExtension() {
 subprojects {
     tasks.withType<com.android.build.gradle.internal.tasks.L8DexDesugarLibTask>().configureEach {
         keepRulesConfigurations.addAll(
-            listOf(
-                "-dontshrink",
+            listOf(            
                 "-dontoptimize",
                 "-dontobfuscate",
-                "-keep class j$.** { *; }",
+                "-keep class j$.nio.** { *; }",
                 "-dontwarn **"
             )
         )
