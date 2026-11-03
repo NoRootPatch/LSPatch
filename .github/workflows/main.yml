@@ -86,6 +86,69 @@ jobs:
                 print("patched:", p)
         PY
 
+    - name: Patch ByteBufferDexClassLoader
+      run: |
+          python3 - << 'EOF'
+          import glob
+          for stub_path in glob.glob("**/stubs/**/BaseDexClassLoader.java", recursive=True):
+              with open(stub_path, "r", encoding="utf-8") as f:
+                  stub_code = f.read()
+              if "File optimizedDirectory" not in stub_code:
+                  stub_ctor = (
+                      "    public BaseDexClassLoader(String dexPath, java.io.File optimizedDirectory, "
+                      "String librarySearchPath, ClassLoader parent) {\n"
+                      "        throw new RuntimeException(\"Stub!\");\n"
+                      "    }\n}"
+                  )
+                  stub_code = stub_code[:stub_code.rfind("}")] + stub_ctor
+                  with open(stub_path, "w", encoding="utf-8") as f:
+                      f.write(stub_code)
+                  print(f"Updated stub: {stub_path}")
+
+          new_java_code = """package hidden;
+
+          import android.os.Build;
+          import java.lang.reflect.Field;
+          import java.nio.ByteBuffer;
+          import dalvik.system.BaseDexClassLoader;
+
+          public class ByteBufferDexClassLoader extends BaseDexClassLoader {
+
+              public ByteBufferDexClassLoader(ByteBuffer[] dexFiles, ClassLoader parent) {
+                  this(dexFiles, null, parent);
+              }
+
+              public ByteBufferDexClassLoader(ByteBuffer[] dexFiles, String librarySearchPath, ClassLoader parent) {
+                  super("", null, librarySearchPath, parent);
+                  try {
+                      BaseDexClassLoader delegate = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                              ? new dalvik.system.InMemoryDexClassLoader(dexFiles, librarySearchPath, parent)
+                              : (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                              ? new dalvik.system.InMemoryDexClassLoader(dexFiles, parent)
+                              : (BaseDexClassLoader) Class.forName("oldlib.dalvik.system.InMemoryDexClassLoader", true, ByteBufferDexClassLoader.class.getClassLoader()).getConstructor(ByteBuffer[].class, String.class, ClassLoader.class)
+                               .newInstance(dexFiles, librarySearchPath, parent);
+                      Field pathListField = BaseDexClassLoader.class.getDeclaredField("pathList");
+                      pathListField.setAccessible(true);
+                      Object pathList = pathListField.get(delegate);
+                      Field contextField = pathList.getClass().getDeclaredField("definingContext");
+                      contextField.setAccessible(true);
+                      contextField.set(pathList, this);
+                      pathListField.set(this, pathList);
+                  } catch (Throwable e) {
+                      throw new RuntimeException("Failed to init ByteBufferDexClassLoader", e);
+                  }
+              }
+          }
+          """      
+          clean_code = "\n".join(line[10:] if line.startswith("          ") else line for line in new_java_code.splitlines()) + "\n"
+          targets = glob.glob("**/ByteBufferDexClassLoader.java", recursive=True)
+          assert targets, "Not found ByteBufferDexClassLoader.java!"
+          for target in targets:
+              with open(target, "w", encoding="utf-8") as f:
+                  f.write(clean_code)
+              print(f"Patched successfully: {target}")
+          EOF
+
     - name: Write key
       if: github.event_name != 'pull_request'
       run: |
