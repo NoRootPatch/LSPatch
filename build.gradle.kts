@@ -5,6 +5,7 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.internal.storage.file.FileRepository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import com.android.build.gradle.LibraryExtension
+import com.android.build.gradle.internal.tasks.L8DexDesugarLibTask
 
 plugins {
     alias(libs.plugins.agp.lib) apply false
@@ -258,6 +259,17 @@ fun Project.configureBaseExtension() {
 }
 
 subprojects {
+    tasks.withType<com.android.build.gradle.internal.tasks.L8DexDesugarLibTask>().configureEach {
+        keepRulesConfigurations.addAll(
+            listOf(
+                "-dontshrink",
+                "-dontoptimize",
+                "-dontobfuscate",
+                "-keep class j$.** { *; }",
+                "-dontwarn **"
+            )
+        )
+    }
     // :apkzlib is vendored Google code (com.android.tools.build.apkzlib) -- keep its upstream
     // style, don't subject it to our formatter.
     if (name != "apkzlib") {
