@@ -337,7 +337,7 @@ public class LSPApplication {
                 Log.w(TAG, "Original AppComponentFactory not found: " + originalFactory);
                 originalFactory = null;
             }
-            appInfo.appComponentFactory = originalFactory;
+            // appInfo.appComponentFactory = originalFactory;
 
             var mPackages = (Map<?, ?>) XposedHelpers.getObjectField(activityThread, "mPackages");
             mPackages.remove(appInfo.packageName);
