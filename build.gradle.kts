@@ -265,6 +265,7 @@ subprojects {
                 "-dontoptimize",
                 "-dontobfuscate",
                 "-keep class j$.nio.** { *; }",
+                "-keep class j$.io.** { *; }",
                 "-dontwarn **"
             )
         )
