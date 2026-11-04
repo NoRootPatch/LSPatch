@@ -439,7 +439,7 @@ public class LSPApplication {
         var attrs = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("r--------"));
 
         for (int i = codePaths.size() - 1; i >= 0; i--) {
-            String splitName = i == 0 ? null : appInfo.splitNames[i - 1];
+            String splitName = (i == 0 || android.os.Build.VERSION.SDK_INT < 26) ? null : appInfo.splitNames[i - 1];
             File curProfileFile = new File(profileDir, splitName == null ? "primary.prof" : splitName + ".split.prof").getAbsoluteFile();
             Log.d(TAG, "Processing " + curProfileFile.getAbsolutePath());
             try {
