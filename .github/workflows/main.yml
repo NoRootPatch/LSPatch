@@ -104,7 +104,6 @@ jobs:
                   with open(stub_path, "w", encoding="utf-8") as f:
                       f.write(stub_code)
                   print(f"Updated stub: {stub_path}")
-
           new_java_code = """package hidden;
 
           import android.os.Build;
@@ -115,18 +114,12 @@ jobs:
           public class ByteBufferDexClassLoader extends BaseDexClassLoader {
 
               public ByteBufferDexClassLoader(ByteBuffer[] dexFiles, ClassLoader parent) {
-                  this(dexFiles, null, parent);
-              }
-
-              public ByteBufferDexClassLoader(ByteBuffer[] dexFiles, String librarySearchPath, ClassLoader parent) {
-                  super("", null, librarySearchPath, parent);
+                  super("", null, null, parent);
                   try {
-                      BaseDexClassLoader delegate = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                              ? new dalvik.system.InMemoryDexClassLoader(dexFiles, librarySearchPath, parent)
-                              : (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                              ? new dalvik.system.InMemoryDexClassLoader(dexFiles, parent)
-                              : (BaseDexClassLoader) Class.forName("oldlib.dalvik.system.InMemoryDexClassLoader", true, ByteBufferDexClassLoader.class.getClassLoader()).getConstructor(ByteBuffer[].class, String.class, ClassLoader.class)
-                               .newInstance(dexFiles, librarySearchPath, parent);
+                      BaseDexClassLoader delegate = (Build.VERSION.SDK_INT >= 26)
+                              ? new BaseDexClassLoader(dexFiles, parent)
+                              : (BaseDexClassLoader) Class.forName("oldlib.dalvik.system.InMemoryDexClassLoader", true, ByteBufferDexClassLoader.class.getClassLoader()).getConstructor(ByteBuffer[].class, ClassLoader.class)
+                               .newInstance(dexFiles, parent);
                       Field pathListField = BaseDexClassLoader.class.getDeclaredField("pathList");
                       pathListField.setAccessible(true);
                       Object pathList = pathListField.get(delegate);
@@ -138,17 +131,21 @@ jobs:
                       throw new RuntimeException("Failed to init ByteBufferDexClassLoader", e);
                   }
               }
+
+              public ByteBufferDexClassLoader(ByteBuffer[] dexFiles, String librarySearchPath, ClassLoader parent) {
+                  super(dexFiles, librarySearchPath, parent);
+              }
           }
-          """      
+          """
           clean_code = "\n".join(line[10:] if line.startswith("          ") else line for line in new_java_code.splitlines()) + "\n"
           targets = glob.glob("**/ByteBufferDexClassLoader.java", recursive=True)
-          assert targets, "Not found ByteBufferDexClassLoader.java!"
+          assert targets, "Not found file ByteBufferDexClassLoader.java!"
           for target in targets:
               with open(target, "w", encoding="utf-8") as f:
                   f.write(clean_code)
               print(f"Patched successfully: {target}")
           EOF
-
+    
     - name: Write key
       if: github.event_name != 'pull_request'
       run: |
