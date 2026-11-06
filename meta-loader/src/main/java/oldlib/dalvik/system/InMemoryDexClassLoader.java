@@ -2,28 +2,23 @@ package oldlib.dalvik.system;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.os.Build;
 import dalvik.system.BaseDexClassLoader;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
 import java.util.UUID;
 
 // This is just a temporary version; I'm actually very tired from doing so much research.
 public class InMemoryDexClassLoader extends BaseDexClassLoader {
 
-    private static final String TEMP_DEX_PREFIX = ".dex";
+    private static final String TEMP_DEX_PREFIX = ".compat_dex_";
     private static volatile boolean sCleanedUp = false;
-    
+
     private static ClassLoader resolveParent(ClassLoader parent) {
         if (parent != null) {
             return parent;
@@ -31,7 +26,7 @@ public class InMemoryDexClassLoader extends BaseDexClassLoader {
         ClassLoader boot = ClassLoader.getSystemClassLoader().getParent();
         return boot != null ? boot : ClassLoader.getSystemClassLoader();
     }
-    
+
     public InMemoryDexClassLoader(ByteBuffer[] dexBuffers, String librarySearchPath, ClassLoader parent) {
         super(writeBuffersToDexPath(dexBuffers), null, librarySearchPath, resolveParent(parent));
     }
@@ -57,19 +52,15 @@ public class InMemoryDexClassLoader extends BaseDexClassLoader {
     }
 
     private static String writeBuffersToDexPath(ByteBuffer[] dexBuffers) {
-        Context context = getApplicationContext();
-        if (context == null) {
-            throw new IllegalStateException("The context cannot be automatically found. Please ensure the call is on a valid Android process.");
-        }
-        ensureCleanupOrphanFiles(context);
-        File codeCacheDir = context.getCodeCacheDir();
+        File codeCacheDir = getCodeCacheDir();
+        ensureCleanupOrphanFiles(codeCacheDir);
         StringBuilder dexPathBuilder = new StringBuilder();
         try {
             for (int i = 0; i < dexBuffers.length; i++) {
                 ByteBuffer buffer = dexBuffers[i];
                 File tempFile = new File(codeCacheDir, TEMP_DEX_PREFIX + UUID.randomUUID().toString().replace("-", "") + ".dex");
                 try (FileOutputStream fos = new FileOutputStream(tempFile);
-                    FileChannel channel = fos.getChannel()) {
+                     FileChannel channel = fos.getChannel()) {
                     ByteBuffer slice = buffer.duplicate();
                     while (slice.hasRemaining()) {
                         channel.write(slice);
@@ -113,24 +104,29 @@ public class InMemoryDexClassLoader extends BaseDexClassLoader {
                 android.content.pm.ApplicationInfo appInfo = (android.content.pm.ApplicationInfo) infoField.get(boundData);
                 if (appInfo != null && appInfo.dataDir != null) {
                     File dir = new File(appInfo.dataDir, "code_cache");
-                    if (!dir.exists()) dir.mkdirs();
+                    if (!dir.exists()) {
+                        dir.mkdirs();
+                    }
                     return dir;
                 }
             }
         } catch (Throwable ignored) {}
         return new File(System.getProperty("java.io.tmpdir", "/data/local/tmp"));
     }
- 
-    private static void ensureCleanupOrphanFiles(Context context) {
+
+    private static void ensureCleanupOrphanFiles(File codeCacheDir) {
         if (sCleanedUp) return;
         sCleanedUp = true;
+        final long now = System.currentTimeMillis();
         new Thread(() -> {
             try {
-                File dir = context.getCodeCacheDir();
-                File[] orphanFiles = dir.listFiles((d, name) -> name.startsWith(TEMP_DEX_PREFIX) && name.endsWith(".dex"));
+                File[] orphanFiles = codeCacheDir.listFiles((d, name) -> name.startsWith(TEMP_DEX_PREFIX) && name.endsWith(".dex"));
                 if (orphanFiles != null) {
-                    for (File f : orphanFiles) {                   
-                        f.delete();
+                    for (File f : orphanFiles) {
+                        // 10 minutes
+                        if (now - f.lastModified() > 600_000L) {
+                            f.delete();
+                        }
                     }
                 }
             } catch (Throwable ignored) {
