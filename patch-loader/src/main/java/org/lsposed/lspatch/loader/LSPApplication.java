@@ -109,8 +109,8 @@ public class LSPApplication {
         // synthetic super, so XResources resolves cleanly. Publish that parent as Vector's
         // dummyClassLoader so XposedBridge.initXResources() short-circuits instead of building its own
         // device-Resources super and re-parenting the framework loader.
-        /* ClassLoader frameworkLoader = XposedBridge.class.getClassLoader();
-        if (frameworkLoader != null && frameworkLoader.getParent() != null) {
+        ClassLoader frameworkLoader = XposedBridge.class.getClassLoader();
+        /* if (frameworkLoader != null && frameworkLoader.getParent() != null) {
             XposedBridge.dummyClassLoader = frameworkLoader.getParent();
         } */
 
