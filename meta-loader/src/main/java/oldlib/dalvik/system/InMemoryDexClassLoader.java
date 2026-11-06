@@ -24,8 +24,16 @@ public class InMemoryDexClassLoader extends BaseDexClassLoader {
     private static final String TEMP_DEX_PREFIX = ".dex";
     private static volatile boolean sCleanedUp = false;
     
+    private static ClassLoader resolveParent(ClassLoader parent) {
+        if (parent != null) {
+            return parent;
+        }
+        ClassLoader boot = ClassLoader.getSystemClassLoader().getParent();
+        return boot != null ? boot : ClassLoader.getSystemClassLoader();
+    }
+    
     public InMemoryDexClassLoader(ByteBuffer[] dexBuffers, String librarySearchPath, ClassLoader parent) {
-        super(writeBuffersToDexPath(dexBuffers), null, librarySearchPath, parent);
+        super(writeBuffersToDexPath(dexBuffers), null, librarySearchPath, resolveParent(parent));
     }
 
     public InMemoryDexClassLoader(ByteBuffer dexBuffer, ClassLoader parent) {
@@ -86,19 +94,33 @@ public class InMemoryDexClassLoader extends BaseDexClassLoader {
     }
 
     @SuppressLint("PrivateApi")
-    private static Context getApplicationContext() {
+    private static File getCodeCacheDir() {
         try {
             Class<?> activityThreadClass = Class.forName("android.app.ActivityThread");
             Method method = activityThreadClass.getDeclaredMethod("currentApplication");
             Context app = (Context) method.invoke(null);
             if (app != null) {
-                return app.getApplicationContext();
+                return app.getCodeCacheDir();
             }
-        } catch (Throwable ignored) {
-        }
-        return null;
+            Method currentAtMethod = activityThreadClass.getDeclaredMethod("currentActivityThread");
+            Object currentAt = currentAtMethod.invoke(null);
+            Field boundField = activityThreadClass.getDeclaredField("mBoundApplication");
+            boundField.setAccessible(true);
+            Object boundData = boundField.get(currentAt);
+            if (boundData != null) {
+                Field infoField = boundData.getClass().getDeclaredField("appInfo");
+                infoField.setAccessible(true);
+                android.content.pm.ApplicationInfo appInfo = (android.content.pm.ApplicationInfo) infoField.get(boundData);
+                if (appInfo != null && appInfo.dataDir != null) {
+                    File dir = new File(appInfo.dataDir, "code_cache");
+                    if (!dir.exists()) dir.mkdirs();
+                    return dir;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return new File(System.getProperty("java.io.tmpdir", "/data/local/tmp"));
     }
-
+ 
     private static void ensureCleanupOrphanFiles(Context context) {
         if (sCleanedUp) return;
         sCleanedUp = true;
@@ -115,4 +137,4 @@ public class InMemoryDexClassLoader extends BaseDexClassLoader {
             }
         }, "CompatDexCleaner").start();
     }
-                                  }
+}
