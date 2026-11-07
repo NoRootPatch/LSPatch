@@ -60,43 +60,30 @@ jobs:
           import re
 
           path = Path("core/build.gradle.kts")
-
-          if not path.is_file():
-              raise SystemExit(f"File not found: {path.resolve()}")
-
           text = path.read_text()
-          addition = "isCoreLibraryDesugaringEnabled = true"
 
-          if addition in text:
+          if "isCoreLibraryDesugaringEnabled = true" in text:
               print("Already patched.")
           else:
               pattern = re.compile(
-                  r"(?m)^(?P<indent>[ \t]*)targetCompatibility\s*=\s*androidTargetCompatibility\s*$"
+                  r"(compileOptions\.apply\s*\{\s*"
+                  r"sourceCompatibility\s*=\s*androidSourceCompatibility\s*\n"
+                  r"\s*targetCompatibility\s*=\s*androidTargetCompatibility)"
               )
-              matches = list(pattern.finditer(text))
 
-              if len(matches) != 1:
-                  print("Found targetCompatibility lines:")
-                  for line in text.splitlines():
-                      if "targetCompatibility" in line or "compileOptions" in line:
-                          print(repr(line))
+              text, count = pattern.subn(
+                  r"\1\n                isCoreLibraryDesugaringEnabled = true",
+                  text,
+                  count=1
+              )
+
+              if count != 1:
                   raise SystemExit(
-                      f"Expected exactly 1 matching line, found {len(matches)}"
+                      f"Could not patch compileOptions.apply (matches: {count})"
                   )
-
-              match = matches[0]
-              indent = match.group("indent")
-
-              text = (
-                  text[:match.end()]
-                  + "\n"
-                  + indent + addition
-                  + text[match.end():]
-              )
 
               path.write_text(text)
               print("Patched successfully!")
-
           PY
 
     - name: Patch InMemoryDexClassLoader
