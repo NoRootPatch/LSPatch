@@ -150,10 +150,12 @@ jobs:
       run: |
           python3 - << 'EOF'
           import os
-          target_extensions = ('.java', '.kt')       
-          replacements = {            
+          target_extensions = ('.java', '.kt')        
+          replacements = {
+              'java/lang/reflect/Executable': 'j$/lang/reflect/Executable',
               'java.lang.reflect.Executable': 'j$.lang.reflect.Executable'
-          }    
+          }
+          print("[*] Start scanning for patches Executable...")
           modified_count = 0
           for root, dirs, files in os.walk('.'):
               if '.git' in root or '.github' in root:
@@ -163,19 +165,19 @@ jobs:
                       file_path = os.path.join(root, file)
                       try:
                           with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                              content = f.read()                      
+                              content = f.read()                        
                           changed = False
                           for old_str, new_str in replacements.items():
                               if old_str in content:
-                              content = content.replace(old_str, new_str)
-                              changed = True               
+                                  content = content.replace(old_str, new_str)
+                                  changed = True                         
                           if changed:
                               with open(file_path, 'w', encoding='utf-8') as f:
                                   f.write(content)
-                              print(f"[+] Patched: {file_path}")
+                              print(f"[+] Đã vá: {file_path}")
                               modified_count += 1
                       except Exception as e:
-                          print(f"[-] Bug {file_path}: {e}")
+                          print(f"[-] Error during processing {file_path}: {e}")          
           EOF
     
     - name: Write key
