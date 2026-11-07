@@ -266,6 +266,7 @@ subprojects {
                 "-dontobfuscate",
                 "-keep class j$.nio.** { *; }",
                 "-keep class j$.io.** { *; }",
+                "-keep class j$.lang.Executable { *; }",
                 "-dontwarn **"
             )
         )
