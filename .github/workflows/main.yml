@@ -53,29 +53,50 @@ jobs:
           grep -n 'androidMinSdkVersion' "$FILE"
 
     - name: Enable Core Library Desugaring
+      shell: bash
       run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           path = Path("core/build.gradle.kts")
+
+          if not path.is_file():
+              raise SystemExit(f"File not found: {path.resolve()}")
+
           text = path.read_text()
-          old = """            compileOptions.apply {
-                sourceCompatibility = androidSourceCompatibility
-                targetCompatibility = androidTargetCompatibility
-            }"""
+          addition = "isCoreLibraryDesugaringEnabled = true"
 
-          new = """            compileOptions.apply {
-                sourceCompatibility = androidSourceCompatibility
-                targetCompatibility = androidTargetCompatibility
-                isCoreLibraryDesugaringEnabled = true
-            }"""
-
-          if new in text:
-              print("Already patched")
-          elif old in text:
-              path.write_text(text.replace(old, new, 1))
-              print("Patched successfully")
+          if addition in text:
+              print("Already patched.")
           else:
-              raise SystemExit("Could not find compileOptions block")
+              pattern = re.compile(
+                  r"(?m)^(?P<indent>[ \t]*)targetCompatibility\s*=\s*androidTargetCompatibility\s*$"
+              )
+              matches = list(pattern.finditer(text))
+
+              if len(matches) != 1:
+                  print("Found targetCompatibility lines:")
+                  for line in text.splitlines():
+                      if "targetCompatibility" in line or "compileOptions" in line:
+                          print(repr(line))
+                  raise SystemExit(
+                      f"Expected exactly 1 matching line, found {len(matches)}"
+                  )
+
+              match = matches[0]
+              indent = match.group("indent")
+
+              text = (
+                  text[:match.end()]
+                  + "\n"
+                  + indent + addition
+                  + text[match.end():]
+              )
+
+              path.write_text(text)
+              print("Patched successfully!")
+
           PY
 
     - name: Patch InMemoryDexClassLoader
