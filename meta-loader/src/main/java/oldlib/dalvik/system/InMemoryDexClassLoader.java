@@ -3,6 +3,7 @@ package oldlib.dalvik.system;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import dalvik.system.BaseDexClassLoader;
+import dalvik.system.PathClassLoader;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,11 +21,14 @@ public class InMemoryDexClassLoader extends BaseDexClassLoader {
     private static volatile boolean sCleanedUp = false;
 
     private static ClassLoader resolveParent(ClassLoader parent) {
-        if (parent != null) {
-            return parent;
-        }
         ClassLoader boot = ClassLoader.getSystemClassLoader().getParent();
-        return boot != null ? boot : ClassLoader.getSystemClassLoader();
+        if (boot == null) {
+            boot = ClassLoader.getSystemClassLoader();
+        }
+        if (parent == null || parent == ClassLoader.getSystemClassLoader()  || parent instanceof dalvik.system.PathClassLoader || parent.getClass().getName().endsWith("PathClassLoader")) {
+            return boot;
+        }
+        return parent;
     }
 
     public InMemoryDexClassLoader(ByteBuffer[] dexBuffers, String librarySearchPath, ClassLoader parent) {
