@@ -52,6 +52,32 @@ jobs:
           PY
           grep -n 'androidMinSdkVersion' "$FILE"
 
+    - name: Enable Core Library Desugaring
+      run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("core/build.gradle.kts")
+          text = path.read_text()
+          old = """            compileOptions.apply {
+                sourceCompatibility = androidSourceCompatibility
+                targetCompatibility = androidTargetCompatibility
+            }"""
+
+          new = """            compileOptions.apply {
+                sourceCompatibility = androidSourceCompatibility
+                targetCompatibility = androidTargetCompatibility
+                isCoreLibraryDesugaringEnabled = true
+            }"""
+
+          if new in text:
+              print("Already patched")
+          elif old in text:
+              path.write_text(text.replace(old, new, 1))
+              print("Patched successfully")
+          else:
+              raise SystemExit("Could not find compileOptions block")
+          PY
+
     - name: Patch InMemoryDexClassLoader
       run: |
         python3 - <<'PY'
@@ -144,40 +170,6 @@ jobs:
               with open(target, "w", encoding="utf-8") as f:
                   f.write(clean_code)
               print(f"Patched successfully: {target}")
-          EOF
-
-    - name: Execute Recursive String Replacement
-      run: |
-          python3 - << 'EOF'
-          import os
-          target_extensions = ('.java', '.kt')        
-          replacements = {
-              'java/lang/reflect/Executable': 'j$/lang/reflect/Executable',
-              'java.lang.reflect.Executable': 'j$.lang.reflect.Executable'
-          }
-          print("[*] Start scanning for patches Executable...")
-          modified_count = 0
-          for root, dirs, files in os.walk('.'):
-              if '.git' in root or '.github' in root:
-                  continue
-              for file in files:
-                  if file.endswith(target_extensions):
-                      file_path = os.path.join(root, file)
-                      try:
-                          with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                              content = f.read()                        
-                          changed = False
-                          for old_str, new_str in replacements.items():
-                              if old_str in content:
-                                  content = content.replace(old_str, new_str)
-                                  changed = True                         
-                          if changed:
-                              with open(file_path, 'w', encoding='utf-8') as f:
-                                  f.write(content)
-                              print(f"[+] Đã vá: {file_path}")
-                              modified_count += 1
-                      except Exception as e:
-                          print(f"[-] Error during processing {file_path}: {e}")          
           EOF
     
     - name: Write key
