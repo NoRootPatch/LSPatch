@@ -10,6 +10,7 @@
 -keep class android.app.**{*;}
 -keep class android.content.**{*;}
 -keep class android.os.**{*;}
+-keep class j$.lang.Executable{*;}
 
 -keep class android.view.**{*;}
 -keep class com.lody.whale.**{*;}
