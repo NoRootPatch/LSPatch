@@ -58,10 +58,8 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           path = Path("core/build.gradle.kts")
           text = path.read_text()
-
           if "isCoreLibraryDesugaringEnabled = true" in text:
               print("Already patched.")
           else:
@@ -70,7 +68,6 @@ jobs:
                   r"sourceCompatibility\s*=\s*androidSourceCompatibility\s*\n"
                   r"\s*targetCompatibility\s*=\s*androidTargetCompatibility)"
               )
-
               text, count = pattern.subn(
                   r"\1\n                isCoreLibraryDesugaringEnabled = true",
                   text,
@@ -85,6 +82,34 @@ jobs:
               path.write_text(text)
               print("Patched successfully!")
           PY
+  
+    - name: Enable MultiDex in Vector
+      shell: bash
+      run: |
+        python3 - <<'PY'
+        from pathlib import Path
+        import re
+        path = Path("core/zygisk/build.gradle.kts")
+        text = path.read_text()
+
+        if re.search(r'\bmultiDexEnabled\s*=\s*true', text):
+            print("MultiDex already enabled.")
+        else:
+            pattern = re.compile(r'(?m)^([ \t]*)defaultConfig\s*\{')
+            match = pattern.search(text)
+            if not match:
+                raise SystemExit("Could not find defaultConfig block.")
+            indent = match.group(1) + "    "
+            pos = match.end()
+            text = (
+                text[:pos]
+                + "\n"
+                + indent + "multiDexEnabled = true"
+                + text[pos:]
+            )
+            path.write_text(text)
+            print("MultiDex enabled successfully.")
+        PY
 
     - name: Patch InMemoryDexClassLoader
       run: |
