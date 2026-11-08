@@ -87,6 +87,53 @@ jobs:
         sed -i 's/multiDexEnabled = false/multiDexEnabled = true/' core/zygisk/build.gradle.kts
         grep -n 'multiDexEnabled' core/zygisk/build.gradle.kts
 
+    - name: Add Core Library Desugaring Dependencies
+      shell: bash
+      run: |
+        python3 - <<'PY'
+        from pathlib import Path
+        import re
+
+        modules = [
+            Path("core/legacy"),
+            Path("core/xposed"),
+            Path("core/services/daemon-service"),
+        ]
+
+        dependency = (
+            'coreLibraryDesugaring('
+            '"com.android.tools:desugar_jdk_libs_nio:2.1.5")'
+        )
+
+        for module in modules:
+            candidates = [
+                module / "build.gradle.kts",
+                module / "build.gradle",
+            ]
+
+            path = next((p for p in candidates if p.is_file()), None)
+            if path is None:
+                raise SystemExit(f"Missing Gradle file: {module}")
+
+            content = path.read_text()
+            if "desugar_jdk_libs_nio" in content:
+                print(f"Already present: {path}")
+                continue
+            match = re.search(r'(?m)^([ \t]*)dependencies\s*\{', content)
+            if not match:
+                raise SystemExit(f"No dependencies block: {path}")
+            indent = match.group(1) + "    "
+            pos = match.end()
+            content = (
+                content[:pos]
+                + "\n"
+                + indent + dependency
+                + content[pos:]
+            )
+            path.write_text(content)
+            print(f"Patched: {path}")
+        PY
+
     - name: Patch InMemoryDexClassLoader
       run: |
         python3 - <<'PY'
