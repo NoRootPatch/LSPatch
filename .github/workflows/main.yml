@@ -98,6 +98,8 @@ jobs:
             Path("core/legacy"),
             Path("core/xposed"),
             Path("core/services/daemon-service"),
+            Path("core/manager"),
+            Path("core/manager-ui"),           
         ]
 
         dependency = (
