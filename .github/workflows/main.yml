@@ -51,91 +51,7 @@ jobs:
           print("Patched androidMinSdkVersion = 24")          
           PY
           grep -n 'androidMinSdkVersion' "$FILE"
-
-    - name: Enable Core Library Desugaring
-      shell: bash
-      run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          path = Path("core/build.gradle.kts")
-          text = path.read_text()
-          if "isCoreLibraryDesugaringEnabled = true" in text:
-              print("Already patched.")
-          else:
-              pattern = re.compile(
-                  r"(compileOptions\.apply\s*\{\s*"
-                  r"sourceCompatibility\s*=\s*androidSourceCompatibility\s*\n"
-                  r"\s*targetCompatibility\s*=\s*androidTargetCompatibility)"
-              )
-              text, count = pattern.subn(
-                  r"\1\n                isCoreLibraryDesugaringEnabled = true",
-                  text,
-                  count=1
-              )
-              if count != 1:
-                  raise SystemExit(
-                      f"Could not patch compileOptions.apply (matches: {count})"
-                  )
-              path.write_text(text)
-              print("Patched successfully!")
-          PY
   
-    - name: Enable MultiDex
-      shell: bash
-      run: |
-        sed -i 's/multiDexEnabled = false/multiDexEnabled = true/' core/zygisk/build.gradle.kts
-        grep -n 'multiDexEnabled' core/zygisk/build.gradle.kts
-
-    - name: Add Core Library Desugaring Dependencies
-      shell: bash
-      run: |
-        python3 - <<'PY'
-        from pathlib import Path
-        import re
-
-        modules = [
-            Path("core/legacy"),
-            Path("core/xposed"),
-            Path("core/services/daemon-service"),
-            Path("core/manager"),
-            Path("core/manager-ui"),           
-        ]
-
-        dependency = (
-            'coreLibraryDesugaring('
-            '"com.android.tools:desugar_jdk_libs_nio:2.1.5")'
-        )
-
-        for module in modules:
-            candidates = [
-                module / "build.gradle.kts",
-                module / "build.gradle",
-            ]
-
-            path = next((p for p in candidates if p.is_file()), None)
-            if path is None:
-                raise SystemExit(f"Missing Gradle file: {module}")
-
-            content = path.read_text()
-            if "desugar_jdk_libs_nio" in content:
-                print(f"Already present: {path}")
-                continue
-            match = re.search(r'(?m)^([ \t]*)dependencies\s*\{', content)
-            if not match:
-                raise SystemExit(f"No dependencies block: {path}")
-            indent = match.group(1) + "    "
-            pos = match.end()
-            content = (
-                content[:pos]
-                + "\n"
-                + indent + dependency
-                + content[pos:]
-            )
-            path.write_text(content)
-            print(f"Patched: {path}")
-        PY
-
     - name: Patch InMemoryDexClassLoader
       run: |
         python3 - <<'PY'
@@ -228,6 +144,40 @@ jobs:
               with open(target, "w", encoding="utf-8") as f:
                   f.write(clean_code)
               print(f"Patched successfully: {target}")
+          EOF
+
+    - name: Execute Recursive String Replacement
+      run: |
+          python3 - << 'EOF'
+          import os
+          target_extensions = ('.java', '.kt')        
+          replacements = {
+              'java/lang/reflect/Executable': 'j$/lang/reflect/Executable',
+              'java.lang.reflect.Executable': 'j$.lang.reflect.Executable'
+          }
+          print("[*] Start scanning for patches Executable...")
+          modified_count = 0
+          for root, dirs, files in os.walk('.'):
+              if '.git' in root or '.github' in root:
+                  continue
+              for file in files:
+                  if file.endswith(target_extensions):
+                      file_path = os.path.join(root, file)
+                      try:
+                          with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                              content = f.read()                        
+                          changed = False
+                          for old_str, new_str in replacements.items():
+                              if old_str in content:
+                                  content = content.replace(old_str, new_str)
+                                  changed = True                         
+                          if changed:
+                              with open(file_path, 'w', encoding='utf-8') as f:
+                                  f.write(content)
+                              print(f"[+] Đã vá: {file_path}")
+                              modified_count += 1
+                      except Exception as e:
+                          print(f"[-] Error during processing {file_path}: {e}")          
           EOF
     
     - name: Write key
