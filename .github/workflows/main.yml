@@ -26,7 +26,7 @@ jobs:
         submodules: 'recursive'
         fetch-depth: 0
 
-    - name: Patch Vector minSdk to 24
+    - name: Patch Vector
       shell: bash
       run: |
           FILE="core/build.gradle.kts"
@@ -48,7 +48,7 @@ jobs:
               )
           with open(path, "w", encoding="utf-8") as f:
               f.write(updated)
-          print("Patched androidMinSdkVersion = 24")
+          print("Patched androidMinSdkVersion = 24")          
           PY
           grep -n 'androidMinSdkVersion' "$FILE"
 
@@ -73,43 +73,19 @@ jobs:
                   text,
                   count=1
               )
-
               if count != 1:
                   raise SystemExit(
                       f"Could not patch compileOptions.apply (matches: {count})"
                   )
-
               path.write_text(text)
               print("Patched successfully!")
           PY
   
-    - name: Enable MultiDex in Vector
+    - name: Enable MultiDex
       shell: bash
       run: |
-        python3 - <<'PY'
-        from pathlib import Path
-        import re
-        path = Path("core/zygisk/build.gradle.kts")
-        text = path.read_text()
-
-        if re.search(r'\bmultiDexEnabled\s*=\s*true', text):
-            print("MultiDex already enabled.")
-        else:
-            pattern = re.compile(r'(?m)^([ \t]*)defaultConfig\s*\{')
-            match = pattern.search(text)
-            if not match:
-                raise SystemExit("Could not find defaultConfig block.")
-            indent = match.group(1) + "    "
-            pos = match.end()
-            text = (
-                text[:pos]
-                + "\n"
-                + indent + "multiDexEnabled = true"
-                + text[pos:]
-            )
-            path.write_text(text)
-            print("MultiDex enabled successfully.")
-        PY
+        sed -i 's/multiDexEnabled = false/multiDexEnabled = true/' core/zygisk/build.gradle.kts
+        grep -n 'multiDexEnabled' core/zygisk/build.gradle.kts
 
     - name: Patch InMemoryDexClassLoader
       run: |
