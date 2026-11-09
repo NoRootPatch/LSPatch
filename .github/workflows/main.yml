@@ -146,40 +146,22 @@ jobs:
               print(f"Patched successfully: {target}")
           EOF
 
-    - name: Execute Recursive String Replacement
+    - name: Patch Executable with Method
       run: |
-          python3 - << 'EOF'
-          import os
-          target_extensions = ('.java', '.kt')        
-          replacements = {
-              'java/lang/reflect/Executable': 'j$/lang/reflect/Executable',
-              'java.lang.reflect.Executable': 'j$.lang.reflect.Executable'
-          }
-          print("[*] Start scanning for patches Executable...")
-          modified_count = 0
-          for root, dirs, files in os.walk('.'):
-              if '.git' in root or '.github' in root:
-                  continue
-              for file in files:
-                  if file.endswith(target_extensions):
-                      file_path = os.path.join(root, file)
-                      try:
-                          with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                              content = f.read()                        
-                          changed = False
-                          for old_str, new_str in replacements.items():
-                              if old_str in content:
-                                  content = content.replace(old_str, new_str)
-                                  changed = True                         
-                          if changed:
-                              with open(file_path, 'w', encoding='utf-8') as f:
-                                  f.write(content)
-                              print(f"[+] Đã vá: {file_path}")
-                              modified_count += 1
-                      except Exception as e:
-                          print(f"[-] Error during processing {file_path}: {e}")          
-          EOF
-    
+          find . \( -name "*.kt" -o -name "*.java" \) -not -path "./.git/*" | while read f; do
+            grep -q "java\.lang\.reflect\.Executable" "$f" || continue
+            sed -i 's/java\.lang\.reflect\.Executable/java.lang.reflect.Method/g' "$f"
+            sed -i 's/import java\.lang\.reflect\.Executable;/import java.lang.reflect.Method;/' "$f"
+            sed -i 's/import java\.lang\.reflect\.Executable$/import java.lang.reflect.Method/' "$f"
+            sed -i 's/: Executable/: Method/g' "$f"
+            sed -i 's/(Executable)/(Method)/g' "$f"
+            sed -i 's/as Executable/as Method/g' "$f"
+            sed -i 's/<T extends Executable>/<T extends Method>/g' "$f"
+            sed -i 's/<T : Executable>/<T : Method>/g' "$f"
+            sed -i 's/instanceof Executable/instanceof Method/g' "$f"
+          done
+          echo "done"
+
     - name: Write key
       if: github.event_name != 'pull_request'
       run: |
