@@ -153,9 +153,9 @@ jobs:
             -exec grep -l "java\.lang\.reflect\.Executable" {} + |
           while read f; do
             sed -i 's/java\.lang\.reflect\.Executable/java.lang.reflect.Member/g; s/\bExecutable\b/Member/g' "$f"
-            sed -i 's/\([a-zA-Z_]*\)\.isAccessible = true/(\1 as java.lang.reflect.AccessibleObject).isAccessible = true/g' "$f"
+            sed -i 's/\([a-zA-Z_][a-zA-Z0-9_]*\)\.parameterTypes/(\1 as java.lang.reflect.Method).parameterTypes/g' "$f"
+            sed -i 's/\([a-zA-Z_][a-zA-Z0-9_]*\)\.isAccessible = true/(\1 as java.lang.reflect.AccessibleObject).isAccessible = true/g' "$f"
             awk '/^import /{if(s[$0]++)next}1' "$f" > "$f.t" && mv "$f.t" "$f"
-          done
 
     - name: Write key
       if: github.event_name != 'pull_request'
