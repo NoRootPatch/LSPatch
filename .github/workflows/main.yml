@@ -146,17 +146,16 @@ jobs:
               print(f"Patched successfully: {target}")
           EOF
 
-    - name: replace Executable with Method
+    - name: Patch Executable
       run: |
           find . \( -name "*.kt" -o -name "*.java" \) \
-            -not -path "./.git/*" \
-            -not -path "./core/external/*" \
-          | while read f; do
-            grep -q "java\.lang\.reflect\.Executable" "$f" || continue
-            sed -i 's/java\.lang\.reflect\.Executable/java.lang.reflect.Method/g' "$f"
-            sed -i 's/\bExecutable\b/Method/g' "$f"
+            -not -path "./.git/*" -not -path "./core/external/*" \
+            -exec grep -l "java\.lang\.reflect\.Executable" {} + |
+          while read f; do
+            sed -i 's/java\.lang\.reflect\.Executable/java.lang.reflect.Member/g; s/\bExecutable\b/Member/g' "$f"
+            sed -i 's/\([a-zA-Z_]*\)\.isAccessible = true/(\1 as java.lang.reflect.AccessibleObject).isAccessible = true/g' "$f"
+            awk '/^import /{if(s[$0]++)next}1' "$f" > "$f.t" && mv "$f.t" "$f"
           done
-          echo "done"
 
     - name: Write key
       if: github.event_name != 'pull_request'
