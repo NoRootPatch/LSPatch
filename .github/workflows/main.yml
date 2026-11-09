@@ -146,19 +146,12 @@ jobs:
               print(f"Patched successfully: {target}")
           EOF
 
-    - name: Patch Executable with Method
+    - name: Replace Executable with Method
       run: |
           find . \( -name "*.kt" -o -name "*.java" \) -not -path "./.git/*" | while read f; do
             grep -q "java\.lang\.reflect\.Executable" "$f" || continue
             sed -i 's/java\.lang\.reflect\.Executable/java.lang.reflect.Method/g' "$f"
-            sed -i 's/import java\.lang\.reflect\.Executable;/import java.lang.reflect.Method;/' "$f"
-            sed -i 's/import java\.lang\.reflect\.Executable$/import java.lang.reflect.Method/' "$f"
-            sed -i 's/: Executable/: Method/g' "$f"
-            sed -i 's/(Executable)/(Method)/g' "$f"
-            sed -i 's/as Executable/as Method/g' "$f"
-            sed -i 's/<T extends Executable>/<T extends Method>/g' "$f"
-            sed -i 's/<T : Executable>/<T : Method>/g' "$f"
-            sed -i 's/instanceof Executable/instanceof Method/g' "$f"
+            sed -i 's/\bExecutable\b/Method/g' "$f"
           done
           echo "done"
 
