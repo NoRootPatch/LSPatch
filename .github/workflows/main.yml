@@ -151,11 +151,16 @@ jobs:
           python3 -c "
           import re, os, sys
           changed = 0
-          f = 'core/native/src/jni/hook_bridge.cpp'
-          s = open(f, encoding='utf-8').read()
-          s = s.replace('java/lang/reflect/Executable', 'java/lang/reflect/Member')
-          open(f, 'w', encoding='utf-8').write(s)
-          print(f'  {f}')
+          for root, _, files in os.walk('.'):
+              if '.git' in root: continue
+              for fn in files:
+                  if not fn.endswith(('.cpp', '.cc', '.h', '.hpp')): continue
+                  p = os.path.join(root, fn)
+                  s = open(p, encoding='utf-8', errors='ignore').read()
+                  if 'java/lang/reflect/Executable' not in s: continue
+                  s = s.replace('java/lang/reflect/Executable', 'java/lang/reflect/Member')
+                  s = re.sub(r'\bExecutable\b', 'Member', s)
+                  open(p, 'w', encoding='utf-8').write(s)
           for root, _, files in os.walk('.'):
               if '.git' in root or 'core/external' in root: continue
               for fn in files:
