@@ -148,13 +148,34 @@ jobs:
 
     - name: Patch Executable
       run: |
-          find . -name "*.kt" -o -name "*.java" | grep -v ".git" | grep -v "core/external" | grep -l "java\.lang\.reflect\.Executable" 2>/dev/null | while read f; do
-            sed -i 's/java\.lang\.reflect\.Executable/java.lang.reflect.Member/g; s/\bExecutable\b/Member/g' "$f"
-            sed -i 's/\([a-zA-Z_][a-zA-Z0-9_]*\)\.parameterTypes/(\1 as java.lang.reflect.Method).parameterTypes/g' "$f"
-            sed -i 's/\([a-zA-Z_][a-zA-Z0-9_]*\)\.isAccessible = true/(\1 as java.lang.reflect.AccessibleObject).isAccessible = true/g' "$f"
-            awk '/^import /{if(s[$0]++)next}1' "$f" > "$f.t" && mv "$f.t" "$f"
-          done
-          
+          python3 -c "
+          import re, os, sys
+          changed = 0
+          for root, _, files in os.walk('.'):
+              if '.git' in root or 'core/external' in root: continue
+              for fn in files:
+                  if not fn.endswith(('.kt', '.java')): continue
+                  p = os.path.join(root, fn)
+                  s = open(p, encoding='utf-8', errors='ignore').read()
+                  o = s
+                  s = s.replace('java.lang.reflect.Executable', 'java.lang.reflect.Member')
+                  s = re.sub(r'\bExecutable\b', 'Member', s)
+                  s = re.sub(r'(\w+)\.parameterTypes', r'(\1 as java.lang.reflect.Method).parameterTypes', s)
+                  s = re.sub(r'(\w+)\.isAccessible = true', r'(\1 as java.lang.reflect.AccessibleObject).isAccessible = true', s)
+                  lines = s.split('\n')
+                  seen, out = set(), []
+                  for l in lines:
+                      if l.startswith('import ') and l in seen: continue
+                      if l.startswith('import '): seen.add(l)
+                      out.append(l)
+                  s = '\n'.join(out)
+                  if s != o:
+                      open(p, 'w', encoding='utf-8').write(s)
+                      changed += 1
+                      print(f'  patched: {p}')
+          print(f'done: {changed} files')
+          "
+           
     - name: Write key
       if: github.event_name != 'pull_request'
       run: |
