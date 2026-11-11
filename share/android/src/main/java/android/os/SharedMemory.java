@@ -1,6 +1,5 @@
 package android.os;
 
-import android.system.MutableInt; 
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.MemoryFile;
@@ -9,6 +8,7 @@ import java.io.FileDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import android.util.MutableInt;
 
 public final class SharedMemory implements Parcelable, Closeable {
 
