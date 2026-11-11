@@ -1,6 +1,6 @@
 package android.os;
 
-import java.lang.reflect.Constructor;
+import android.system.MutableInt; 
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.MemoryFile;
@@ -8,7 +8,6 @@ import java.io.Closeable;
 import java.io.FileDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 
 public final class SharedMemory implements Parcelable, Closeable {
@@ -153,8 +152,8 @@ public final class SharedMemory implements Parcelable, Closeable {
                 Method ashmemSetProt = os.getClass().getMethod("ashmem_set_prot", FileDescriptor.class, int.class);
                 ashmemSetProt.invoke(os, mFileDescriptor, prot);
             } catch (NoSuchMethodException e) {
-                Method ioctlInt = os.getClass().getMethod("ioctlInt", FileDescriptor.class, int.class, int.class);
-                ioctlInt.invoke(os, mFileDescriptor, ASHMEM_SET_PROT_MASK, prot);
+                Method ioctlInt = os.getClass().getMethod("ioctlInt", FileDescriptor.class, int.class, MutableInt.class);
+                ioctlInt.invoke(os, mFileDescriptor, ASHMEM_SET_PROT_MASK, new MutableInt(prot));
             }
         } catch (Throwable t) {
             throw new RuntimeException(t);
