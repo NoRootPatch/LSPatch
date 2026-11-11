@@ -154,8 +154,11 @@ public final class SharedMemory implements Parcelable, Closeable {
                 Method ashmemSetProt = os.getClass().getMethod("ashmem_set_prot", FileDescriptor.class, int.class);
                 ashmemSetProt.invoke(os, mFileDescriptor, prot);
             } catch (NoSuchMethodException e) {
-                Method ioctlInt = os.getClass().getMethod("ioctlInt", FileDescriptor.class, int.class, MutableInt.class);
-                ioctlInt.invoke(os, mFileDescriptor, ASHMEM_SET_PROT_MASK, new MutableInt(prot));
+                try {
+                    Method ioctlInt = os.getClass().getMethod("ioctlInt", FileDescriptor.class, int.class, MutableInt.class);
+                    ioctlInt.invoke(os, mFileDescriptor, ASHMEM_SET_PROT_MASK, new MutableInt(prot));
+                } catch (Exception ignored) {
+                }
             }
         } catch (Throwable t) {
             throw new RuntimeException(t);
