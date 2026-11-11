@@ -185,6 +185,25 @@ jobs:
                       print(f'  patched: {p}')
           print(f'done: {changed} files')
           "
+
+    - name: Patch HiddenApiBridge
+      run: |
+          python3 -c "
+          import os
+          for root, _, files in os.walk('.'):
+              if '.git' in root or 'core/external' in root: continue
+              for fn in files:
+                  if not fn.endswith(('.kt', '.java')): continue
+                  p = os.path.join(root, fn)
+                  s = open(p, encoding='utf-8', errors='ignore').read()
+                  if 'Os_ioctlInt' not in s: continue
+                  s = s.replace('new Int32Ref(arg)', 'new MutableInt(arg)')
+                  if 'import java.lang.ref.Int32Ref' in s:
+                      s = s.replace('import java.lang.ref.Int32Ref', 'import java.lang.Integer')
+                  open(p, 'w', encoding='utf-8').write(s)
+                  print(f'  [IOCTL] {p}')
+          print('done')
+          "
            
     - name: Write key
       if: github.event_name != 'pull_request'
