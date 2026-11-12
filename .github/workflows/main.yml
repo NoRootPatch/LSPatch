@@ -204,6 +204,21 @@ jobs:
                   print(f'  [IOCTL] {p}')
           print('done')
           "
+
+    - name: Patch VectorModuleClassLoader
+      run: |
+          python3 -c "
+          import os
+          for root, _, files in os.walk('.'):
+              if '.git' in root: continue
+              for fn in files:
+                  if fn != 'VectorModuleClassLoader.kt': continue
+                  p = os.path.join(root, fn)
+                  s = open(p, encoding='utf-8', errors='ignore').read()
+                  s = s.replace('.parallelStream()', '.stream()')
+                  open(p, 'w', encoding='utf-8').write(s)
+                  print(f'  {p}')
+          "
            
     - name: Write key
       if: github.event_name != 'pull_request'
