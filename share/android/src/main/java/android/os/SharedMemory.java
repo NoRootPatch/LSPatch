@@ -43,13 +43,6 @@ public final class SharedMemory implements Parcelable, Closeable {
         }
     }
     
-    private static ByteBuffer createDirectBuffer(int length, long address, FileDescriptor fd, Runnable unmapper, boolean readOnly) throws Exception {
-        Class<?> clazz = Class.forName("java.nio.DirectByteBuffer");
-        Constructor<?> constructor = clazz.getDeclaredConstructor(int.class, long.class, FileDescriptor.class, Runnable.class, boolean.class);
-        constructor.setAccessible(true);
-        return (ByteBuffer) constructor.newInstance(length, address, fd, unmapper, readOnly);
-    }
-    
     public ByteBuffer mapReadOnly() {
         return map(PROT_READ);
     }
@@ -73,8 +66,18 @@ public final class SharedMemory implements Parcelable, Closeable {
         boolean mapped = false;
         try {
             Object os = getOs();
-            Method mmap = os.getClass().getMethod("mmap", long.class, long.class, int.class, int.class, FileDescriptor.class, long.class);
-            address = (Long) mmap.invoke(os, 0L, (long) length, prot, MAP_SHARED, mFileDescriptor, (long) offset);
+            long addr;
+            try {
+                // Android 8+: mmap with FileDescriptor
+                Method mmap = os.getClass().getMethod("mmap", long.class, long.class, int.class, int.class, FileDescriptor.class, long.class);
+                addr = (Long) mmap.invoke(os, 0L, (long) length, prot, MAP_SHARED, mFileDescriptor, (long) offset);
+            } catch (NoSuchMethodException e) {
+                // Android 7: mmap with int fd
+                Method mmap = os.getClass().getMethod("mmap", long.class, long.class, int.class, int.class, int.class, long.class);
+                int fdInt = getFdInt(mFileDescriptor);
+                addr = (Long) mmap.invoke(os, 0L, (long) length, prot, MAP_SHARED, fdInt, (long) offset);
+            }
+            address = addr;
             mapped = true;
             final long mappedAddress = address;
             final long mappedLength = length;
@@ -96,18 +99,14 @@ public final class SharedMemory implements Parcelable, Closeable {
             mapped = false;
             return buffer;
         } catch (InvocationTargetException e) {
-            if (mapped) {
-                unmapAddress(address, length);
-            }
+            if (mapped) unmapAddress(address, length);
             throw new RuntimeException("Unable to map SharedMemory", e.getCause());
         } catch (Exception e) {
-            if (mapped) {
-                unmapAddress(address, length);
-            }
-            throw new RuntimeException("Unable to map SharedMemory", e);
+            if (mapped) unmapAddress(address, length);
+           throw new RuntimeException("Unable to map SharedMemory", e);
         }
     }
-    
+  
     public static void unmap(ByteBuffer buffer) {
         if (buffer == null) {
             throw new NullPointerException("buffer");
@@ -162,6 +161,25 @@ public final class SharedMemory implements Parcelable, Closeable {
             }
         } catch (Throwable t) {
             throw new RuntimeException(t);
+        }
+    }
+
+    private static ByteBuffer createDirectBuffer(int length, long address, FileDescriptor fd, Runnable unmapper, boolean readOnly) throws Exception {
+        Class<?> clazz = Class.forName("java.nio.DirectByteBuffer");
+        Constructor<?> constructor = clazz.getDeclaredConstructor(int.class, long.class, FileDescriptor.class, Runnable.class, boolean.class);
+        constructor.setAccessible(true);
+        return (ByteBuffer) constructor.newInstance(length, address, fd, unmapper, readOnly);
+    }
+
+    private static int getFdInt(FileDescriptor fd) throws Exception {
+        try {
+            Method m = FileDescriptor.class.getDeclaredMethod("getInt$");
+            m.setAccessible(true);
+            return (Integer) m.invoke(fd);
+        } catch (NoSuchMethodException e) {
+            Field f = FileDescriptor.class.getDeclaredField("fd");
+            f.setAccessible(true);
+            return f.getInt(fd);
         }
     }
 
