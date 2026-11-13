@@ -189,17 +189,37 @@ public final class SharedMemory implements Parcelable, Closeable {
     public int describeContents() {
         return 1;
     }
-
+    
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeRawFileDescriptor(mFileDescriptor);
-        dest.writeInt(mSize);
+        try {
+            java.lang.reflect.Method m = Parcel.class.getMethod("writeRawFileDescriptor", FileDescriptor.class);
+            m.invoke(dest, mFileDescriptor);
+            dest.writeInt(mSize);
+        } catch (Exception e) {
+            try {
+                java.lang.reflect.Field f = FileDescriptor.class.getDeclaredField("fd");
+                f.setAccessible(true);
+                int fd = f.getInt(mFileDescriptor);
+                dest.writeFileDescriptor(new ParcelFileDescriptor(fd));
+                dest.writeInt(mSize);
+            } catch (Exception e2) {
+                throw new RuntimeException(e2);
+            }
+        }
     }
 
     public static final Parcelable.Creator<SharedMemory> CREATOR = new Parcelable.Creator<SharedMemory>() {
         @Override
         public SharedMemory createFromParcel(Parcel source) {
-            FileDescriptor fd = source.readRawFileDescriptor();
+            FileDescriptor fd;
+            try {
+                java.lang.reflect.Method m = Parcel.class.getMethod("readRawFileDescriptor");
+                fd = (FileDescriptor) m.invoke(source);
+            } catch (Exception e) {
+                ParcelFileDescriptor pfd = source.readFileDescriptor();
+                fd = pfd.getFileDescriptor();
+            }
             int size = source.readInt();
             return new SharedMemory(fd, size, null);
         }
@@ -209,4 +229,4 @@ public final class SharedMemory implements Parcelable, Closeable {
             return new SharedMemory[size];
         }
     };
-}
+} 
