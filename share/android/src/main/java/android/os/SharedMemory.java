@@ -191,12 +191,16 @@ public final class SharedMemory implements Parcelable, Closeable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        dest.writeStrongReference(mFileDescriptor);
+        dest.writeInt(mSize);
     }
 
     public static final Parcelable.Creator<SharedMemory> CREATOR = new Parcelable.Creator<SharedMemory>() {
         @Override
         public SharedMemory createFromParcel(Parcel source) {
-            return null;
+            FileDescriptor fd = source.readStrongReference();
+            int size = source.readInt();
+            return new SharedMemory(fd, size, null);
         }
 
         @Override
