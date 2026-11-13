@@ -118,7 +118,7 @@ jobs:
                   try {
                       BaseDexClassLoader delegate = (Build.VERSION.SDK_INT >= 26)
                               ? new BaseDexClassLoader(dexFiles, parent)
-                              : (BaseDexClassLoader) Class.forName("oldlib.dalvik.system.InMemoryDexClassLoader", true, ByteBufferDexClassLoader.class.getClassLoader()).getConstructor(ByteBuffer[].class, ClassLoader.class)
+                              : (BaseDexClassLoader) Class.forName("oldlib.dalvik.system.BaseDexClassLoader", true, ByteBufferDexClassLoader.class.getClassLoader()).getConstructor(ByteBuffer[].class, ClassLoader.class)
                                .newInstance(dexFiles, parent);
                       Field pathListField = BaseDexClassLoader.class.getDeclaredField("pathList");
                       pathListField.setAccessible(true);
