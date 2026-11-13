@@ -113,7 +113,8 @@ public class LSPApplication {
         /* if (frameworkLoader != null && frameworkLoader.getParent() != null) {
             XposedBridge.dummyClassLoader = frameworkLoader.getParent();
         } */
-
+        XposedHelpers.setObjectField(frameworkLoader, "parent", ClassLoader.getSystemClassLoader().getParent());
+        
         Startup.initXposed(false, ActivityThread.currentProcessName(), context.getApplicationInfo().dataDir, service);
         Startup.bootstrapXposed(false);
         // The target app's LoadedApk was built by hand (createLoadedApkWithContext) before these hooks
@@ -135,6 +136,13 @@ public class LSPApplication {
         // Install signature bypass before the class loader -- and thus the app factory's <clinit> -- is
         // realized, so a signature/APK read performed from that initializer already sees the spoof.
         SigBypass.doSigBypass(context, config.optInt("sigBypassLevel"));
+        
+        if (android.os.Build.VERSION.SDK_INT < 26 && stubLoadedApk != null && appLoadedApk != null) {
+            ClassLoader originalCl = stubLoadedApk.getClassLoader();
+            if (originalCl != null) {
+                XposedHelpers.setObjectField(appLoadedApk, "mClassLoader", originalCl);
+            }
+        }
 
         // Realize the target's class loader now that hooks, modules and signature bypass are all armed.
         // getClassLoader() -> createOrUpdateClassLoaderLocked -> createAppFactory triggers
