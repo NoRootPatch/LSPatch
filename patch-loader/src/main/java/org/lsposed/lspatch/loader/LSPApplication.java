@@ -125,7 +125,7 @@ public class LSPApplication {
         // packed app can wire an anti-tamper check into that <clinit> (e.g. via a hijacked
         // androidx.core.app.CoreComponentFactory -> System.loadLibrary -> JNI_OnLoad), and until the
         // lifecycle and signature bypass are armed it would run unopposed.
-        Startup.trackLoadedApk(appLoadedApk);
+        Startup.trackLoadedApk(stubLoadedApk != null ? stubLoadedApk : appLoadedApk);
 
         // WARN: Since it uses `XResource`, the following class should not be initialized
         // before forkPostCommon is invoke. Otherwise, you will get failure of XResources
