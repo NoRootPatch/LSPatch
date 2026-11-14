@@ -219,6 +219,32 @@ jobs:
                   open(p, 'w', encoding='utf-8').write(s)
                   print(f'  {p}')
           "
+
+    - name: Patch VectorStartup for Android 7 LoadedApk hook
+      run: |
+        python3 -c '
+        import os
+        target_file = None
+        for root, dirs, files in os.walk("."):
+            if "VectorStartup.kt" in files:
+                target_file = os.path.join(root, "VectorStartup.kt")
+                break
+        if not target_file:
+            print("VectorStartup.kt not found!")
+            exit(1)
+        print(f"Patching {target_file}...")
+        with open(target_file, "r", encoding="utf-8") as f:
+            content = f.read()
+        old_filter = '\''filter { it.name == "createOrUpdateClassLoaderLocked" }'\''
+        new_filter = '\''filter { it.name == (if (android.os.Build.VERSION.SDK_INT >= 26) "createOrUpdateClassLoaderLocked" else "getClassLoader") }'\''
+        if old_filter in content:
+            content = content.replace(old_filter, new_filter)
+            with open(target_file, "w", encoding="utf-8") as f:
+                f.write(content)
+            print("Successfully patched VectorStartup for Nougat!")
+        else:
+            print("Filter already patched or pattern mismatch.")
+        '
            
     - name: Write key
       if: github.event_name != 'pull_request'
