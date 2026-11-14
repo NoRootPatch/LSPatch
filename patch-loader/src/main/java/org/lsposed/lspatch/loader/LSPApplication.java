@@ -142,6 +142,10 @@ public class LSPApplication {
             if (originalCl != null) {
                 XposedHelpers.setObjectField(appLoadedApk, "mClassLoader", originalCl);
             }
+            Object originalApp = XposedHelpers.getObjectField(stubLoadedApk, "mApplication");
+            if (originalApp != null) {
+                XposedHelpers.setObjectField(appLoadedApk, "mApplication", originalApp);
+            }
         }
 
         // Realize the target's class loader now that hooks, modules and signature bypass are all armed.
