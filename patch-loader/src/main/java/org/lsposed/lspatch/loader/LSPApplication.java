@@ -137,7 +137,8 @@ public class LSPApplication {
         // realized, so a signature/APK read performed from that initializer already sees the spoof.
         SigBypass.doSigBypass(context, config.optInt("sigBypassLevel"));
         
-        if (android.os.Build.VERSION.SDK_INT < 26 && stubLoadedApk != null && appLoadedApk != null) {
+        // Sync mClassLoader, mApplication because I use ContentProvider
+        if (stubLoadedApk != null && appLoadedApk != null) {
             ClassLoader originalCl = stubLoadedApk.getClassLoader();
             if (originalCl != null) {
                 XposedHelpers.setObjectField(appLoadedApk, "mClassLoader", originalCl);
