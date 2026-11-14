@@ -39,7 +39,6 @@
 -keep class org.lsposed.lspatch.Patcher$Options { *; }
 -keep class org.lsposed.lspatch.share.LSPConfig { *; }
 -keep class org.lsposed.lspatch.share.PatchConfig { *; }
--keep class android.os.SharedMemory { *; }
 
 # Reflective JSON is a contract written in field names and generic signatures, and the shrinker
 # honours neither for a class nothing else pins down: it renames the fields the keys are made of,
@@ -50,5 +49,8 @@
 -keepclassmembers class org.lsposed.patch.LSPatch {
     private <fields>;
 }
+-keep class android.os.SharedMemory { *; }
+-keep class org.lsposed.lspatch.util.LSPPackageManager { *; }
+
 -dontwarn com.google.auto.value.AutoValue$Builder
 -dontwarn com.google.auto.value.AutoValue
