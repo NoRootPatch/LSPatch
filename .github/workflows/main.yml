@@ -43,9 +43,7 @@ jobs:
           pattern = r'(?m)^(\s*val\s+androidMinSdkVersion\s*=\s*)\d+(\s*(?://.*)?)$'
           updated, count = re.subn(pattern, r'\g<1>24\g<2>', content)
           if count != 1:
-              raise SystemExit(
-                  f"ERROR: Expected exactly one androidMinSdkVersion declaration, found {count}"
-              )
+              raise SystemExit(f"ERROR: Expected exactly one androidMinSdkVersion declaration, found {count}")
           with open(path, "w", encoding="utf-8") as f:
               f.write(updated)
           print("Patched androidMinSdkVersion = 24")          
@@ -220,7 +218,7 @@ jobs:
                   print(f'  {p}')
           "
 
-    - name: Patch VectorStartup for Android 7 LoadedApk hook
+    - name: Patch VectorStartup
       run: |
         python3 -c '
         import os
@@ -316,34 +314,3 @@ jobs:
         name: symbols-${{ env.commit }}
         path: |
           patch-loader/build/symbols
-
-    # --- stable release (pushed v* tag) --------------------------------------------------------
-    #
-    # `git tag vX && git push --tags` publishes the release here from the very apk/jar this build
-    # produced — nothing is hand-uploaded, so the assets can never drift from what was built. The
-    # release is named by its tag, the notes come from CHANGELOG.md in the repo (overwritten per
-    # release), and both the release and debug outputs are attached. Bump verName before tagging.
-    - name: Publish release
-      if: ${{ success() && github.ref_type == 'tag' && startsWith(github.ref_name, 'v') }}
-      env:
-        GH_TOKEN: ${{ github.token }}
-        TAG: ${{ github.ref_name }}
-      run: |
-        set -euo pipefail
-        # `%s` argument, never the format string, so a `%` anywhere in the changelog stays literal.
-        # CHANGELOG.md is optional -- an absent one just leaves the notes as the tag header.
-        notes=$(printf '# LSPatch %s\n\n%s\n' "${TAG}" "$(cat CHANGELOG.md 2>/dev/null || true)")
-        # Collect the built assets by their real names and fail loudly if the apk or jar is missing,
-        # rather than letting a glob publish a half-empty release. Both variants are attached.
-        shopt -s nullglob
-        assets=(out/release/manager-*.apk out/release/lspatch-*.jar out/debug/manager-*.apk out/debug/lspatch-*.jar)
-        ls out/release/manager-*.apk >/dev/null 2>&1 || { echo "::error::no release manager APK built"; exit 1; }
-        ls out/release/lspatch-*.jar >/dev/null 2>&1 || { echo "::error::no release lspatch jar built"; exit 1; }
-        # Recreated rather than edited so a re-run replaces the assets instead of appending a second
-        # copy. No --cleanup-tag: the release is rebuilt, the pushed release tag is kept.
-        gh release delete "$TAG" --yes 2>/dev/null || true
-        gh release create "$TAG" \
-          --latest \
-          --title "LSPatch ${TAG}" \
-          --notes "$notes" \
-          "${assets[@]}"  
