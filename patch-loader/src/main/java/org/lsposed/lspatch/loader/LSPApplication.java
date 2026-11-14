@@ -117,25 +117,6 @@ public class LSPApplication {
         
         Startup.initXposed(false, ActivityThread.currentProcessName(), context.getApplicationInfo().dataDir, service);
         Startup.bootstrapXposed(false);
-        // The target app's LoadedApk was built by hand (createLoadedApkWithContext) before these hooks
-        // existed, so its constructor never registered it with LoadedApkTracker. Register it now so
-        // createAppFactory / createOrUpdateClassLoaderLocked drive its modern + legacy package
-        // lifecycle exactly once when realizeLoadedApk() builds the class loader below -- and, crucially,
-        // so onPackageLoaded fires *before* the app's AppComponentFactory static initializer runs. A
-        // packed app can wire an anti-tamper check into that <clinit> (e.g. via a hijacked
-        // androidx.core.app.CoreComponentFactory -> System.loadLibrary -> JNI_OnLoad), and until the
-        // lifecycle and signature bypass are armed it would run unopposed.
-        Startup.trackLoadedApk(stubLoadedApk != null ? stubLoadedApk : appLoadedApk);
-
-        // WARN: Since it uses `XResource`, the following class should not be initialized
-        // before forkPostCommon is invoke. Otherwise, you will get failure of XResources
-        Log.i(TAG, "Load modules");
-        loadModulesAndDeliver(context);
-        Log.i(TAG, "Modules initialized");
-
-        // Install signature bypass before the class loader -- and thus the app factory's <clinit> -- is
-        // realized, so a signature/APK read performed from that initializer already sees the spoof.
-        SigBypass.doSigBypass(context, config.optInt("sigBypassLevel"));
         
         // Sync mClassLoader, mApplication because I use ContentProvider
         if (stubLoadedApk != null && appLoadedApk != null) {
@@ -148,7 +129,26 @@ public class LSPApplication {
                 XposedHelpers.setObjectField(appLoadedApk, "mApplication", originalApp);
             }
         }
+        // The target app's LoadedApk was built by hand (createLoadedApkWithContext) before these hooks
+        // existed, so its constructor never registered it with LoadedApkTracker. Register it now so
+        // createAppFactory / createOrUpdateClassLoaderLocked drive its modern + legacy package
+        // lifecycle exactly once when realizeLoadedApk() builds the class loader below -- and, crucially,
+        // so onPackageLoaded fires *before* the app's AppComponentFactory static initializer runs. A
+        // packed app can wire an anti-tamper check into that <clinit> (e.g. via a hijacked
+        // androidx.core.app.CoreComponentFactory -> System.loadLibrary -> JNI_OnLoad), and until the
+        // lifecycle and signature bypass are armed it would run unopposed.
+        Startup.trackLoadedApk(appLoadedApk);
 
+        // WARN: Since it uses `XResource`, the following class should not be initialized
+        // before forkPostCommon is invoke. Otherwise, you will get failure of XResources
+        Log.i(TAG, "Load modules");
+        loadModulesAndDeliver(context);
+        Log.i(TAG, "Modules initialized");
+
+        // Install signature bypass before the class loader -- and thus the app factory's <clinit> -- is
+        // realized, so a signature/APK read performed from that initializer already sees the spoof.
+        SigBypass.doSigBypass(context, config.optInt("sigBypassLevel"));
+        
         // Realize the target's class loader now that hooks, modules and signature bypass are all armed.
         // getClassLoader() -> createOrUpdateClassLoaderLocked -> createAppFactory triggers
         // onPackageLoaded (pre-<clinit>) then, on return, onPackageReady and legacy handleLoadPackage.
